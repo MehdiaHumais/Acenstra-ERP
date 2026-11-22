@@ -1,0 +1,86 @@
+# ---------------------------------------------------------------------------
+# Dependencies / build output
+# ---------------------------------------------------------------------------
+node_modules/
+.next/
+.next-dev/
+out/
+build/
+dist/
+.turbo/
+.cache/
+coverage/
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# Secrets and environment files
+# Keep .env.example as the only committed environment template.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.json
+*service-account*.json
+
+# ---------------------------------------------------------------------------
+# Local databases and uploaded/private data (NEVER commit real data)
+# ---------------------------------------------------------------------------
+data/
+uploads/
+public/uploads/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3
+*.sql.gz
+
+# ---------------------------------------------------------------------------
+# Runtime logs, local server scripts and scratch space
+# ---------------------------------------------------------------------------
+*.log
+*.err
+logs/
+scratch/
+tmp/
+temp/
+server.log
+server.err
+run-server.cmd
+run-server.vbs
+start-server.ps1
+stop-server.ps1
+startup-check.ps1
+start-test.cmd
+AscentraERP-autostart.vbs
+
+# ---------------------------------------------------------------------------
+# Python backend (legacy) artifacts
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+.coverage
+htmlcov/
+*.egg-info/
+
+# ---------------------------------------------------------------------------
+# Editor / OS files
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

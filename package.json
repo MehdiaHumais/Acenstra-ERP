@@ -1,0 +1,48 @@
+{
+  "name": "ascentra-food-distribution-erp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-powered food distribution ERP covering warehouse, traceability, delivery, finance and analytics.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/auth-rbac-mfa.test.ts tests/inbound-receiving.test.ts tests/putaway.test.ts tests/quality-gate.test.ts tests/security-hardening.test.ts tests/stock-intelligence.test.ts tests/customer-order.test.ts tests/customer-order-workflow.test.ts tests/rbac-access-control.test.ts tests/barcode-auth.test.ts tests/product-barcode.test.ts tests/user-onboarding.test.ts tests/external-barcode.test.ts tests/access-request.test.ts tests/notifications-contact.test.ts",
+    "test:e2e": "node --test tests/backend-e2e.test.mjs",
+    "verify": "npm run typecheck && npm run test && npm run build",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "prisma db seed"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@supabase/auth-helpers-nextjs": "^0.15.0",
+    "@zxing/library": "^0.23.0",
+    "jsqr": "1.4.0",
+    "lucide-react": "0.468.0",
+    "next": "^14.2.35",
+    "nodemailer": "^10.6.0",
+    "qrcode": "1.5.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@types/qrcode": "1.5.6",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "autoprefixer": "10.4.20",
+    "postcss": "8.4.49",
+    "prisma": "^5.22.0",
+    "tailwindcss": "3.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "5.7.2"
+  }
+}

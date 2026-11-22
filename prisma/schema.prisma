@@ -1,0 +1,1881 @@
+// ============================================================================
+// Ascentra Food Distribution ERP — Complete Prisma Schema (PostgreSQL)
+// Enterprise Relational Data Model for Food Distribution, FEFO Traceability,
+// Temperature Cold Chain, Quality Inspections, SdI Invoicing & Governed AI.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// 1. Enums
+// ----------------------------------------------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum SupplierStatus {
+  APPROVED
+  PROBATION
+  BLOCKED
+  PENDING_AUDIT
+}
+
+enum StorageCondition {
+  FROZEN
+  CHILLED
+  AMBIENT
+  DRY_STORAGE
+}
+
+enum ZoneType {
+  FROZEN
+  CHILLED
+  AMBIENT
+  QUARANTINE
+  RECEIVING_DOCK
+  STAGING
+}
+
+enum LotStatus {
+  QUARANTINE
+  RELEASED
+  RECALLED
+  EXPIRED
+  CONSUMED
+}
+
+enum CustomerType {
+  RESTAURANT
+  FRANCHISE_STORE
+  WHOLESALE
+  HOTEL_CATERING
+  RETAIL
+}
+
+enum CustomerAccountStatus {
+  ACTIVE
+  CREDIT_HOLD
+  WATCHLIST
+  SUSPENDED
+}
+
+enum OrderStatus {
+  DRAFT
+  CONFIRMED
+  ALLOCATED
+  PICKING
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+}
+
+enum OrderLineStatus {
+  PENDING
+  ALLOCATED
+  PICKED
+  DISPATCHED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+  OVERDUE
+}
+
+enum SdiStatus {
+  NOT_SENT
+  QUEUED
+  TRANSMITTED
+  ACCEPTED
+  REJECTED
+}
+
+enum PaymentMethod {
+  SEPA_CREDIT_TRANSFER
+  SEPA_INSTANT
+  CREDIT_CARD
+  BANK_TRANSFER
+  DIRECT_DEBIT
+  CHECK
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ISSUED
+  ASN_RECEIVED
+  PARTIALLY_RECEIVED
+  COMPLETED
+  CANCELLED
+}
+
+enum AsnStatus {
+  REGISTERED
+  IN_TRANSIT
+  ARRIVED
+  INSPECTED
+  REJECTED
+}
+
+enum QualityCheckOutcome {
+  PASSED
+  CONDITIONAL_PASS
+  FAILED
+}
+
+enum TemperatureStatus {
+  IN_RANGE
+  WARNING
+  EXCURSION
+}
+
+enum RecallSeverity {
+  CLASS_I_HIGH_RISK
+  CLASS_II_POTENTIAL_RISK
+  CLASS_III_LOW_RISK
+}
+
+enum RecallStatus {
+  INITIATED
+  NOTIFICATIONS_SENT
+  QUARANTINED
+  COMPLETED
+  CLOSED
+}
+
+enum CapaSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CapaStatus {
+  OPEN
+  UNDER_INVESTIGATION
+  ACTION_PLANNED
+  IMPLEMENTED
+  VERIFIED
+  CLOSED
+}
+
+enum AIActionType {
+  DEMAND_FORECAST
+  FEFO_ALLOCATION_OPTIMIZATION
+  REORDER_RECOMMENDATION
+  EXPIRY_RISK_ALERT
+  DYNAMIC_PRICING
+  SUPPLIER_RISK_SCORING
+}
+
+enum AIApprovalStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  AUTO_EXECUTED
+}
+
+// ----------------------------------------------------------------------------
+// 2. Identity, RBAC & Permissions (User, Role, Permission)
+// ----------------------------------------------------------------------------
+
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique
+  fullName        String     @map("full_name")
+  passwordHash    String     @map("password_hash")
+  phone           String?
+  warehouse       String?
+  storeId         String?    @map("store_id")
+  mfaEnabled      Boolean    @default(true) @map("mfa_enabled")
+  mfaSecret       String?    @map("mfa_secret")
+  mfaBackupCodes  Json?      @map("mfa_backup_codes")
+  failedAttempts  Int        @default(0) @map("failed_attempts")
+  lockedUntil     DateTime?  @map("locked_until")
+  status          UserStatus @default(ACTIVE)
+  lastLoginAt     DateTime?  @map("last_login_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  roles           UserRole[]
+  refreshTokens   RefreshToken[]
+  createdOrders   Order[]
+  qualityChecks   QualityCheck[]
+  auditEvents     AuditEvent[]
+  aiActionLogs    AIActionLog[]
+  ownedCapas      CAPA[]
+  temperatureLogs TemperatureLog[]
+
+  @@index([status])
+  @@index([email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  tokenHash  String   @unique @map("token_hash")
+  familyId   String   @map("family_id")
+  generation Int      @default(1)
+  revoked    Boolean  @default(false)
+  expiresAt  DateTime @map("expires_at")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  code        String   @unique // ADMINISTRATOR, MANAGEMENT, PROCUREMENT, WAREHOUSE_STAFF, SALES, FINANCE, DRIVER, STORE_USER
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  code        String   @unique // products:read, products:write, orders:write, etc.
+  name        String
+  category    String   // Master Data, Inventory, Sales, Finance, Quality, System
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  roles       RolePermission[]
+
+  @@index([category])
+  @@map("permissions")
+}
+
+model UserRole {
+  userId     String   @map("user_id")
+  roleId     String   @map("role_id")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+  assignedBy String?  @map("assigned_by")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String   @map("role_id")
+  permissionId String   @map("permission_id")
+  grantedAt    DateTime @default(now()) @map("granted_at")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+// ----------------------------------------------------------------------------
+// 3. Master Data: Suppliers, Products, SKUs, UOM
+// ----------------------------------------------------------------------------
+
+model Supplier {
+  id                 String         @id @default(uuid())
+  code               String         @unique // e.g. SUP-ITA-001
+  name               String
+  legalName          String         @map("legal_name")
+  taxId              String?        @map("tax_id")
+  vatNumber          String?        @map("vat_number")
+  contactEmail       String         @map("contact_email")
+  contactPhone       String?        @map("contact_phone")
+  addressLine        String         @map("address_line")
+  city               String
+  postalCode         String         @map("postal_code")
+  country            String         @default("Italy")
+  paymentTerms       String         @default("Net 30") @map("payment_terms")
+  onTimeDeliveryRate Decimal        @default(95.0) @map("on_time_delivery_rate") @db.Decimal(5, 2)
+  qualityScore       Decimal        @default(95.0) @map("quality_score") @db.Decimal(5, 2)
+  status             SupplierStatus @default(APPROVED)
+  certificationsJson Json?          @map("certifications_json")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+  asns           ASN[]
+
+  @@index([status])
+  @@index([country])
+  @@map("suppliers")
+}
+
+model Product {
+  id               String           @id @default(uuid())
+  code             String           @unique // e.g. PRD-SALMON-NOR
+  name             String
+  description      String?
+  category         String           // Seafood, Dairy & Cheese, Meat & Charcuterie, Bakery & Pasta, Produce, Beverages
+  supplierId       String?          @map("supplier_id")
+  storageCondition StorageCondition @default(CHILLED) @map("storage_condition")
+  shelfLifeDays    Int              @map("shelf_life_days")
+  allergenInfo     String?          @map("allergen_info")
+  originCountry    String           @default("Italy") @map("origin_country")
+  isActive         Boolean          @default(true) @map("is_active")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  skus     SKU[]
+  lots     Lot[]
+
+  @@index([category])
+  @@index([storageCondition])
+  @@index([supplierId])
+  @@map("products")
+}
+
+model SKU {
+  id            String   @id @default(uuid())
+  code          String   @unique // e.g. SKU-SAL-001
+  productId     String   @map("product_id")
+  uomId         String   @map("uom_id")
+  barcode       String?  @unique
+  packSize      String   @map("pack_size") // e.g. "5 kg Box", "12 x 1 L Pack"
+  grossWeightKg Decimal  @map("gross_weight_kg") @db.Decimal(12, 3)
+  netWeightKg   Decimal  @map("net_weight_kg") @db.Decimal(12, 3)
+  unitPrice     Decimal  @map("unit_price") @db.Decimal(12, 2)
+  landedCost    Decimal  @map("landed_cost") @db.Decimal(12, 2)
+  reorderPoint  Decimal  @default(20.0) @map("reorder_point") @db.Decimal(12, 3)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  product       Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  uom           UOM                 @relation(fields: [uomId], references: [id], onDelete: Restrict)
+  lots          Lot[]
+  stockBalances Stock[]
+  orderLines    OrderLine[]
+  poLines       PurchaseOrderLine[]
+
+  @@index([productId])
+  @@index([uomId])
+  @@map("skus")
+}
+
+model UOM {
+  id               String   @id @default(uuid())
+  code             String   @unique // KG, CASE, PALLET, EACH, LITER
+  name             String
+  category         String   @default("Weight") // Weight, Volume, Count
+  conversionFactor Decimal  @default(1.0) @map("conversion_factor") @db.Decimal(12, 4)
+  isBaseUnit       Boolean  @default(false) @map("is_base_unit")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  skus SKU[]
+
+  @@map("units_of_measure")
+}
+
+// ----------------------------------------------------------------------------
+// 4. Warehouse, Zones & Bins
+// ----------------------------------------------------------------------------
+
+model Warehouse {
+  id             String   @id @default(uuid())
+  code           String   @unique // e.g. WH-MIL-01
+  name           String
+  addressLine    String   @map("address_line")
+  city           String
+  postalCode     String   @map("postal_code")
+  country        String   @default("Italy")
+  totalCapacity  Decimal  @map("total_capacity_kg") @db.Decimal(14, 2)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  zones           Zone[]
+  stockBalances   Stock[]
+  temperatureLogs TemperatureLog[]
+
+  @@map("warehouses")
+}
+
+model Zone {
+  id            String   @id @default(uuid())
+  code          String   @unique // e.g. Z-CHILL-MIL-01
+  warehouseId   String   @map("warehouse_id")
+  name          String
+  zoneType      ZoneType @default(CHILLED) @map("zone_type")
+  minTempC      Decimal  @map("min_temp_c") @db.Decimal(5, 2)
+  maxTempC      Decimal  @map("max_temp_c") @db.Decimal(5, 2)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  warehouse       Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  bins            Bin[]
+  temperatureLogs TemperatureLog[]
+
+  @@index([warehouseId, zoneType])
+  @@map("zones")
+}
+
+model Bin {
+  id          String   @id @default(uuid())
+  code        String   @unique // e.g. BIN-CH-A01-01
+  zoneId      String   @map("zone_id")
+  aisle       String
+  rack        String
+  shelf       String
+  position    String
+  maxWeightKg Decimal  @default(1500.0) @map("max_weight_kg") @db.Decimal(12, 3)
+  isBlocked   Boolean  @default(false) @map("is_blocked")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  zone            Zone             @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  stockBalances   Stock[]
+  temperatureLogs TemperatureLog[]
+
+  @@index([zoneId, isBlocked])
+  @@map("bins")
+}
+
+// ----------------------------------------------------------------------------
+// 5. Lot & Stock (FEFO Batch Traceability)
+// ----------------------------------------------------------------------------
+
+model Lot {
+  id               String    @id @default(uuid())
+  lotNumber        String    @unique @map("lot_number") // e.g. LOT-2026-SAL-001
+  productId        String    @map("product_id")
+  skuId            String    @map("sku_id")
+  supplierLotNumber String?  @map("supplier_lot_number")
+  productionDate   DateTime  @map("production_date")
+  expiryDate       DateTime  @map("expiry_date") // Key index for FEFO allocation logic
+  receivedDate     DateTime  @default(now()) @map("received_date")
+  status           LotStatus @default(RELEASED)
+  initialQuantity  Decimal   @map("initial_quantity") @db.Decimal(12, 3)
+  qualityNotes     String?   @map("quality_notes")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  product         Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  sku             SKU              @relation(fields: [skuId], references: [id], onDelete: Restrict)
+  stockBalances   Stock[]
+  orderLines      OrderLine[]
+  temperatureLogs TemperatureLog[]
+  recallLots      RecallLot[]
+
+  @@index([expiryDate, status])
+  @@index([skuId, status])
+  @@index([productId])
+  @@map("lots")
+}
+
+model Stock {
+  id                String   @id @default(uuid())
+  warehouseId       String   @map("warehouse_id")
+  binId             String   @map("bin_id")
+  skuId             String   @map("sku_id")
+  lotId             String   @map("lot_id")
+  quantity          Decimal  @default(0) @db.Decimal(12, 3)
+  reservedQuantity  Decimal  @default(0) @map("reserved_quantity") @db.Decimal(12, 3)
+  availableQuantity Decimal  @default(0) @map("available_quantity") @db.Decimal(12, 3)
+  lastCountedAt     DateTime? @map("last_counted_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  bin       Bin       @relation(fields: [binId], references: [id], onDelete: Restrict)
+  sku       SKU       @relation(fields: [skuId], references: [id], onDelete: Restrict)
+  lot       Lot       @relation(fields: [lotId], references: [id], onDelete: Restrict)
+
+  @@unique([binId, skuId, lotId])
+  @@index([warehouseId])
+  @@index([skuId, lotId])
+  @@map("stock")
+}
+
+// ----------------------------------------------------------------------------
+// 6. Customers, Orders & Order Lines
+// ----------------------------------------------------------------------------
+
+model Customer {
+  id               String                @id @default(uuid())
+  code             String                @unique // e.g. CUST-REST-001
+  name             String
+  legalName        String                @map("legal_name")
+  customerType     CustomerType          @default(RESTAURANT) @map("customer_type")
+  vatNumber        String?               @map("vat_number")
+  sdiRecipientCode String?               @map("sdi_recipient_code")
+  email            String
+  phone            String?
+  deliveryAddress  String                @map("delivery_address")
+  city             String                @default("Milan")
+  postalCode       String                @map("postal_code")
+  country          String                @default("Italy")
+  creditLimit      Decimal               @default(15000.00) @map("credit_limit") @db.Decimal(12, 2)
+  currentExposure  Decimal               @default(0.00) @map("current_exposure") @db.Decimal(12, 2)
+  paymentTerms     String                @default("Net 30") @map("payment_terms")
+  accountStatus    CustomerAccountStatus @default(ACTIVE) @map("account_status")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  orders   Order[]
+  invoices Invoice[]
+
+  @@index([customerType])
+  @@index([accountStatus])
+  @@map("customers")
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     String      @unique @map("order_number") // e.g. SO-2026-0001
+  customerId      String      @map("customer_id")
+  createdById     String?     @map("created_by_id")
+  orderDate       DateTime    @default(now()) @map("order_date")
+  deliveryDate    DateTime    @map("delivery_date")
+  channel         String      @default("B2B_PORTAL") // B2B_PORTAL, EDI, SALES_REP, PHONE
+  subtotal        Decimal     @default(0.00) @db.Decimal(12, 2)
+  taxAmount       Decimal     @default(0.00) @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount     Decimal     @default(0.00) @map("total_amount") @db.Decimal(12, 2)
+  status          OrderStatus @default(CONFIRMED)
+  creditApproved  Boolean     @default(true) @map("credit_approved")
+  notes           String?
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  customer   Customer    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  createdBy  User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  orderLines OrderLine[]
+  invoices   Invoice[]
+
+  @@index([customerId])
+  @@index([status, orderDate])
+  @@map("orders")
+}
+
+model OrderLine {
+  id             String          @id @default(uuid())
+  orderId        String          @map("order_id")
+  skuId          String          @map("sku_id")
+  lotId          String?         @map("lot_id") // Optional until FEFO allocation occurs
+  quantity       Decimal         @db.Decimal(12, 3)
+  unitPrice      Decimal         @map("unit_price") @db.Decimal(12, 2)
+  discountAmount Decimal         @default(0.00) @map("discount_amount") @db.Decimal(12, 2)
+  totalPrice     Decimal         @map("total_price") @db.Decimal(12, 2)
+  status         OrderLineStatus @default(PENDING)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sku   SKU   @relation(fields: [skuId], references: [id], onDelete: Restrict)
+  lot   Lot?  @relation(fields: [lotId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([skuId])
+  @@index([lotId])
+  @@map("order_lines")
+}
+
+// ----------------------------------------------------------------------------
+// 7. Invoices & Payments (with Partial Payment Support)
+// ----------------------------------------------------------------------------
+
+model Invoice {
+  id                    String        @id @default(uuid())
+  invoiceNumber         String        @unique @map("invoice_number") // e.g. INV-2026-0001
+  orderId               String        @map("order_id")
+  customerId            String        @map("customer_id")
+  issueDate             DateTime      @default(now()) @map("issue_date")
+  dueDate               DateTime      @map("due_date")
+  subtotal              Decimal       @db.Decimal(12, 2)
+  taxAmount             Decimal       @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount           Decimal       @map("total_amount") @db.Decimal(12, 2)
+  paidAmount            Decimal       @default(0.00) @map("paid_amount") @db.Decimal(12, 2)
+  balanceDue            Decimal       @map("balance_due") @db.Decimal(12, 2)
+  status                InvoiceStatus @default(ISSUED)
+  sdiTransmissionStatus SdiStatus     @default(NOT_SENT) @map("sdi_transmission_status")
+  sdiReference          String?       @map("sdi_reference")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  customer Customer  @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  payments Payment[]
+
+  @@index([orderId])
+  @@index([customerId])
+  @@index([status, dueDate])
+  @@map("invoices")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  paymentNumber String        @unique @map("payment_number") // e.g. PAY-2026-0001
+  invoiceId     String        @map("invoice_id")
+  amount        Decimal       @db.Decimal(12, 2)
+  paymentDate   DateTime      @default(now()) @map("payment_date")
+  paymentMethod PaymentMethod @default(BANK_TRANSFER) @map("payment_method")
+  reference     String?
+  status        PaymentStatus @default(COMPLETED)
+  notes         String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([paymentDate])
+  @@map("payments")
+}
+
+// ----------------------------------------------------------------------------
+// 8. Procurement: Purchase Orders, ASNs & Quality Checks
+// ----------------------------------------------------------------------------
+
+model PurchaseOrder {
+  id           String              @id @default(uuid())
+  poNumber     String              @unique @map("po_number") // e.g. PO-2026-0001
+  supplierId   String              @map("supplier_id")
+  orderDate    DateTime            @default(now()) @map("order_date")
+  expectedDate DateTime            @map("expected_date")
+  subtotal     Decimal             @default(0.00) @db.Decimal(12, 2)
+  taxAmount    Decimal             @default(0.00) @map("tax_amount") @db.Decimal(12, 2)
+  totalAmount  Decimal             @default(0.00) @map("total_amount") @db.Decimal(12, 2)
+  status       PurchaseOrderStatus @default(ISSUED)
+  notes        String?
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  supplier Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  lines    PurchaseOrderLine[]
+  asns     ASN[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id               String   @id @default(uuid())
+  purchaseOrderId  String   @map("purchase_order_id")
+  skuId            String   @map("sku_id")
+  quantityOrdered  Decimal  @map("quantity_ordered") @db.Decimal(12, 3)
+  quantityReceived Decimal  @default(0.00) @map("quantity_received") @db.Decimal(12, 3)
+  unitPrice        Decimal  @map("unit_price") @db.Decimal(12, 2)
+  totalPrice       Decimal  @map("total_price") @db.Decimal(12, 2)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  sku           SKU           @relation(fields: [skuId], references: [id], onDelete: Restrict)
+
+  @@index([purchaseOrderId])
+  @@map("purchase_order_lines")
+}
+
+model ASN {
+  id                String    @id @default(uuid())
+  asnNumber         String    @unique @map("asn_number") // e.g. ASN-2026-0001
+  purchaseOrderId   String    @map("purchase_order_id")
+  supplierId        String    @map("supplier_id")
+  carrierName       String    @map("carrier_name")
+  trackingNumber    String?   @map("tracking_number")
+  shippedAt         DateTime  @map("shipped_at")
+  expectedArrivalAt DateTime  @map("expected_arrival_at")
+  driverName        String?   @map("driver_name")
+  vehiclePlate      String?   @map("vehicle_plate")
+  declaredTempC     Decimal   @map("declared_temp_c") @db.Decimal(5, 2)
+  status            AsnStatus @default(IN_TRANSIT)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  purchaseOrder PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  supplier      Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  qualityChecks QualityCheck[]
+
+  @@index([purchaseOrderId])
+  @@index([supplierId])
+  @@index([status])
+  @@map("asns")
+}
+
+model QualityCheck {
+  id                   String              @id @default(uuid())
+  checkNumber          String              @unique @map("check_number") // e.g. QC-2026-0001
+  asnId                String              @map("asn_id")
+  inspectedById        String?             @map("inspected_by_id")
+  temperatureReadingC  Decimal             @map("temperature_reading_c") @db.Decimal(5, 2)
+  packagingConditionOk Boolean             @default(true) @map("packaging_condition_ok")
+  labelingCompliant    Boolean             @default(true) @map("labeling_compliant")
+  sampleSizeCases      Int                 @map("sample_size_cases")
+  defectCount          Int                 @default(0) @map("defect_count")
+  outcome              QualityCheckOutcome @default(PASSED)
+  correctiveNotes      String?             @map("corrective_notes")
+  inspectedAt          DateTime            @default(now()) @map("inspected_at")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  asn         ASN    @relation(fields: [asnId], references: [id], onDelete: Cascade)
+  inspectedBy User?  @relation(fields: [inspectedById], references: [id], onDelete: SetNull)
+  capas       CAPA[]
+
+  @@index([asnId])
+  @@index([outcome])
+  @@map("quality_checks")
+}
+
+// ----------------------------------------------------------------------------
+// 9. Cold Chain Monitoring: Temperature Logs
+// ----------------------------------------------------------------------------
+
+model TemperatureLog {
+  id           String            @id @default(uuid())
+  sensorId     String            @map("sensor_id") // e.g. SENS-CH-01, SENS-VAN-4
+  readingC     Decimal           @map("reading_c") @db.Decimal(5, 2)
+  minAllowedC  Decimal           @map("min_allowed_c") @db.Decimal(5, 2)
+  maxAllowedC  Decimal           @map("max_allowed_c") @db.Decimal(5, 2)
+  status       TemperatureStatus @default(IN_RANGE)
+  warehouseId  String?           @map("warehouse_id")
+  zoneId       String?           @map("zone_id")
+  binId        String?           @map("bin_id")
+  lotId        String?           @map("lot_id")
+  recordedById String?           @map("recorded_by_id")
+  notes        String?
+  recordedAt   DateTime          @default(now()) @map("recorded_at")
+  createdAt    DateTime          @default(now()) @map("created_at")
+
+  warehouse  Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  zone       Zone?      @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  bin        Bin?       @relation(fields: [binId], references: [id], onDelete: SetNull)
+  lot        Lot?       @relation(fields: [lotId], references: [id], onDelete: SetNull)
+  recordedBy User?      @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([status, recordedAt])
+  @@index([lotId])
+  @@index([zoneId])
+  @@index([warehouseId])
+  @@map("temperature_logs")
+}
+
+// ----------------------------------------------------------------------------
+// 10. Governance, Audit & Governed AI Action Logs
+// ----------------------------------------------------------------------------
+
+model AuditEvent {
+  id         String   @id @default(uuid())
+  actorId    String?  @map("actor_id")
+  actorEmail String   @map("actor_email")
+  action     String   // e.g. orders.create, inventory.fefo_adjust, security.login
+  entityType String   @map("entity_type") // Order, Lot, Customer, QualityCheck
+  entityId   String   @map("entity_id")
+  summary    String
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  timestamp  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([timestamp])
+  @@map("audit_events")
+}
+
+model AIActionLog {
+  id                  String           @id @default(uuid())
+  actionType          AIActionType     @map("action_type")
+  modelName           String           @default("gemini-2.5-flash") @map("model_name")
+  promptSummary       String           @map("prompt_summary")
+  proposedAction      Json             @map("proposed_action")
+  confidenceScore     Decimal          @map("confidence_score") @db.Decimal(5, 4)
+  approvalStatus      AIApprovalStatus @default(PENDING_REVIEW) @map("approval_status")
+  executionResult     Json?            @map("execution_result")
+  approvedById        String?          @map("approved_by_id")
+  affectedEntityType  String?          @map("affected_entity_type")
+  affectedEntityId    String?          @map("affected_entity_id")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  approvedBy User? @relation(fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([actionType, approvalStatus])
+  @@index([createdAt])
+  @@map("ai_action_logs")
+}
+
+// ----------------------------------------------------------------------------
+// 11. Food Safety: Recalls & CAPA
+// ----------------------------------------------------------------------------
+
+model Recall {
+  id                   String         @id @default(uuid())
+  recallNumber         String         @unique @map("recall_number") // e.g. REC-2026-001
+  title                String
+  reason               String
+  hazardClassification RecallSeverity @default(CLASS_I_HIGH_RISK) @map("hazard_classification")
+  regulatoryAgency     String         @default("EFSA / Ministero della Salute") @map("regulatory_agency")
+  status               RecallStatus   @default(INITIATED)
+  initiatedAt          DateTime       @default(now()) @map("initiated_at")
+  closedAt             DateTime?      @map("closed_at")
+  summaryReport        String?        @map("summary_report")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+
+  recallLots RecallLot[]
+  capas      CAPA[]
+
+  @@index([status])
+  @@map("recalls")
+}
+
+model RecallLot {
+  id             String   @id @default(uuid())
+  recallId       String   @map("recall_id")
+  lotId          String   @map("lot_id")
+  quarantinedKg  Decimal  @default(0.0) @map("quarantined_kg") @db.Decimal(12, 3)
+  recoveredKg    Decimal  @default(0.0) @map("recovered_kg") @db.Decimal(12, 3)
+  disposition    String   @default("quarantine_hold") // quarantine_hold, destroyed, returned_to_supplier
+  recordedAt     DateTime @default(now()) @map("recorded_at")
+
+  recall Recall @relation(fields: [recallId], references: [id], onDelete: Cascade)
+  lot    Lot    @relation(fields: [lotId], references: [id], onDelete: Restrict)
+
+  @@unique([recallId, lotId])
+  @@index([lotId])
+  @@map("recall_lots")
+}
+
+model CAPA {
+  id                String       @id @default(uuid())
+  capaNumber        String       @unique @map("capa_number") // e.g. CAPA-2026-001
+  title             String
+  description       String
+  rootCause         String       @map("root_cause")
+  correctiveAction  String       @map("corrective_action")
+  preventiveAction  String       @map("preventive_action")
+  severity          CapaSeverity @default(HIGH)
+  status            CapaStatus   @default(OPEN)
+  ownerId           String       @map("owner_id")
+  qualityCheckId    String?      @map("quality_check_id")
+  recallId          String?      @map("recall_id")
+  targetDueDate     DateTime     @map("target_due_date")
+  completedDate     DateTime?    @map("completed_date")
+  verificationNotes String?      @map("verification_notes")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  qualityCheck QualityCheck? @relation(fields: [qualityCheckId], references: [id], onDelete: SetNull)
+  recall       Recall?       @relation(fields: [recallId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([ownerId])
+  @@map("capas")
+}
+
+// ----------------------------------------------------------------------------
+// 12. Inbound Transport & Goods Receiving
+// ----------------------------------------------------------------------------
+
+model InboundShipment {
+  id                   String   @id
+  shipmentRef          String   @unique @map("shipment_ref")
+  supplierId           String?  @map("supplier_id")
+  supplierName         String   @map("supplier_name")
+  poId                 String?  @map("po_id")
+  poNumber             String?  @map("po_number")
+  asnReference         String?  @map("asn_reference")
+  carrier              String?
+  vehicleReg           String?  @map("vehicle_reg")
+  driverName           String?  @map("driver_name")
+  driverPhone          String?  @map("driver_phone")
+  expectedArrival      String?  @map("expected_arrival")
+  actualArrival        String?  @map("actual_arrival")
+  originWarehouse      String?  @map("origin_warehouse")
+  destinationWarehouse String   @map("destination_warehouse")
+  status               String   @default("expected")
+  transportNotes       String?  @map("transport_notes")
+  createdBy            String   @map("created_by")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  items           InboundShipmentItem[]
+  batches         InboundBatch[]
+  temperatureLogs InboundTemperatureLog[]
+  documents       InboundDocument[]
+  qualityChecks   InboundQualityCheck[]
+
+  @@index([status])
+  @@index([destinationWarehouse])
+  @@index([supplierId])
+  @@map("inbound_shipments")
+}
+
+model InboundShipmentItem {
+  id                      String   @id
+  shipmentId              String   @map("shipment_id")
+  sku                     String
+  productName             String   @map("product_name")
+  orderedQty              Float    @default(0) @map("ordered_qty")
+  orderedUom              String?  @map("ordered_uom")
+  receivedQty             Float    @default(0) @map("received_qty")
+  acceptedQty             Float    @default(0) @map("accepted_qty")
+  rejectedQty             Float    @default(0) @map("rejected_qty")
+  damagedQty              Float    @default(0) @map("damaged_qty")
+  actualWeight            Float?   @map("actual_weight")
+  expectedWeight          Float?   @map("expected_weight")
+  weightUom               String?  @map("weight_uom")
+  weightVariancePct       Float?   @map("weight_variance_pct")
+  weightDiscrepancyStatus String?  @map("weight_discrepancy_status")
+  scaleReference          String?  @map("scale_reference")
+  weightTolerancePct      Float?   @map("weight_tolerance_pct")
+  packages                Int      @default(0)
+  notes                   String?
+  discrepancyStatus       String?  @map("discrepancy_status")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  shipment      InboundShipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  batches       InboundBatch[]
+  qualityChecks InboundQualityCheck[]
+
+  @@index([shipmentId])
+  @@index([sku])
+  @@map("inbound_shipment_items")
+}
+
+model InboundBatch {
+  id              String   @id
+  shipmentId      String   @map("shipment_id")
+  itemId          String?  @map("item_id")
+  sku             String
+  productName     String   @map("product_name")
+  supplierBatch   String   @map("supplier_batch")
+  internalLot     String   @map("internal_lot")
+  supplierId      String?  @map("supplier_id")
+  supplierName    String?  @map("supplier_name")
+  poId            String?  @map("po_id")
+  poNumber        String?  @map("po_number")
+  manufactureDate String?  @map("manufacture_date")
+  expiryDate      String   @map("expiry_date")
+  receivedDate    String   @map("received_date")
+  origin          String?
+  quantity        Float
+  unit            String
+  storage         String?
+  status          String   @default("received")
+  acceptedQty     Float    @default(0) @map("accepted_qty")
+  rejectedQty     Float    @default(0) @map("rejected_qty")
+  quarantinedQty  Float    @default(0) @map("quarantined_qty")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  shipment InboundShipment      @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  item     InboundShipmentItem? @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierBatch, sku, supplierId])
+  @@index([shipmentId])
+  @@index([sku])
+  @@index([internalLot])
+  @@map("inbound_batches")
+}
+
+model InboundTemperatureLog {
+  id          String   @id
+  shipmentId  String   @map("shipment_id")
+  sku         String?
+  tempC       Float    @map("temp_c")
+  unit        String   @default("C")
+  minC        Float    @map("min_c")
+  maxC        Float    @map("max_c")
+  recordedAt  String   @map("recorded_at")
+  recordedBy  String   @map("recorded_by")
+  verifiedBy  String?  @map("verified_by")
+  excursion   Int      @default(0)
+  notes       String?
+  evidenceRef String?  @map("evidence_ref")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  shipment InboundShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@map("inbound_temperature_logs")
+}
+
+model InboundDocument {
+  id              String   @id
+  shipmentId      String   @map("shipment_id")
+  sku             String?
+  docType         String   @map("doc_type")
+  referenceNumber String?  @map("reference_number")
+  issuer          String?
+  issueDate       String?  @map("issue_date")
+  expiryDate      String?  @map("expiry_date")
+  fileName        String   @map("file_name")
+  mimeType        String   @map("mime_type")
+  sizeBytes       Int      @map("size_bytes")
+  storagePath     String   @map("storage_path")
+  status          String   @default("pending_review")
+  verifiedBy      String?  @map("verified_by")
+  verifiedAt      String?  @map("verified_at")
+  reviewNotes     String?  @map("review_notes")
+  uploadedBy      String   @map("uploaded_by")
+  uploadedAt      DateTime @default(now()) @map("uploaded_at")
+
+  shipment InboundShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@map("inbound_documents")
+}
+
+model InboundQualityCheck {
+  id          String   @id
+  shipmentId  String   @map("shipment_id")
+  itemId      String?  @map("item_id")
+  checkType   String   @map("check_type")
+  result      String
+  notes       String?
+  evidence    String?
+  performedBy String   @map("performed_by")
+  performedAt DateTime @default(now()) @map("performed_at")
+
+  shipment InboundShipment      @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  item     InboundShipmentItem? @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@map("inbound_quality_checks")
+}
+
+// ----------------------------------------------------------------------------
+// 13. Module 04 - Quality Gate (Receiving Inspection, HACCP, Hold/Release & CAPA)
+// ----------------------------------------------------------------------------
+
+model QualityInspection {
+  id                       String   @id
+  inspectionNumber         String   @unique @map("inspection_number")
+  shipmentId               String?  @map("shipment_id")
+  shipmentReference        String?  @map("shipment_reference")
+  asnReference             String?  @map("asn_reference")
+  purchaseOrderId          String?  @map("purchase_order_id")
+  supplierId               String?  @map("supplier_id")
+  supplierName             String   @map("supplier_name")
+  productId                String?  @map("product_id")
+  sku                      String
+  productName              String   @map("product_name")
+  supplierBatch            String   @map("supplier_batch")
+  internalLot              String   @map("internal_lot")
+  warehouse                String
+  receivingLocation        String   @default("RCV-STAGE-01") @map("receiving_location")
+  uom                      String   @default("case")
+  receivedQty              Float    @map("received_qty")
+  acceptedQty              Float    @default(0) @map("accepted_qty")
+  heldQty                  Float    @default(0) @map("held_qty")
+  rejectedQty              Float    @default(0) @map("rejected_qty")
+  quarantinedQty           Float    @default(0) @map("quarantined_qty")
+  expectedWeightKg         Float?   @map("expected_weight_kg")
+  actualWeightKg           Float?   @map("actual_weight_kg")
+  weightVerified           Int      @default(0) @map("weight_verified")
+  quantityVerified         Int      @default(0) @map("quantity_verified")
+  manufactureDate          String?  @map("manufacture_date")
+  expiryDate               String   @map("expiry_date")
+  visualInspection         String   @default("pending") @map("visual_inspection")
+  packagingCondition       String   @default("pending") @map("packaging_condition")
+  productCondition         String   @default("pending") @map("product_condition")
+  freshnessStatus          String   @default("pending") @map("freshness_status")
+  labellingStatus          String   @default("pending") @map("labelling_status")
+  traceabilityVerified     Int      @default(0) @map("traceability_verified")
+  tempReadingC             Float?   @map("temp_reading_c")
+  tempMinC                 Float?   @map("temp_min_c")
+  tempMaxC                 Float?   @map("temp_max_c")
+  tempStatus               String   @default("pending") @map("temp_status")
+  certificatesVerified     Int      @default(0) @map("certificates_verified")
+  requiredCertificatesJson String   @default("[]") @map("required_certificates_json")
+  evidenceJson             String   @default("[]") @map("evidence_json")
+  notes                    String?
+  status                   String   @default("pending")
+  decisionReason           String?  @map("decision_reason")
+  inspectorId              String?  @map("inspector_id")
+  inspectorName            String?  @map("inspector_name")
+  inspectedAt              String?  @map("inspected_at")
+  decidedById              String?  @map("decided_by_id")
+  decidedByName            String?  @map("decided_by_name")
+  decidedAt                String?  @map("decided_at")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  haccpReadings HaccpCheckpointReading[]
+  exceptions    QualityException[]
+  capas         QualityCapa[]
+
+  @@index([status])
+  @@index([warehouse])
+  @@index([internalLot])
+  @@index([sku])
+  @@map("quality_inspections")
+}
+
+model HaccpCheckpointTemplate {
+  id                String   @id
+  code              String   @unique
+  checkpointName    String   @map("checkpoint_name")
+  description       String
+  ccpClassification String   @map("ccp_classification")
+  isCcp             Int      @default(1) @map("is_ccp")
+  category          String?
+  sku               String?
+  tempZone          String?  @map("temp_zone")
+  measurementType   String   @default("numeric") @map("measurement_type")
+  minLimit          Float?   @map("min_limit")
+  maxLimit          Float?   @map("max_limit")
+  unit              String?
+  expectedText      String?  @map("expected_text")
+  active            Int      @default(1)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@map("haccp_checkpoint_templates")
+}
+
+model HaccpCheckpointReading {
+  id                String   @id
+  inspectionId      String   @map("inspection_id")
+  shipmentId        String?  @map("shipment_id")
+  templateId        String?  @map("template_id")
+  checkpointCode    String   @map("checkpoint_code")
+  checkpointName    String   @map("checkpoint_name")
+  description       String?
+  ccpClassification String   @map("ccp_classification")
+  isCcp             Int      @default(1) @map("is_ccp")
+  sku               String
+  internalLot       String   @map("internal_lot")
+  minLimit          Float?   @map("min_limit")
+  maxLimit          Float?   @map("max_limit")
+  unit              String?
+  expectedText      String?  @map("expected_text")
+  actualNumeric     Float?   @map("actual_numeric")
+  actualText        String?  @map("actual_text")
+  status            String   @default("pass")
+  criticalViolation Int      @default(0) @map("critical_violation")
+  evidenceJson      String   @default("[]") @map("evidence_json")
+  notes             String?
+  inspectorId       String   @map("inspector_id")
+  inspectorName     String   @map("inspector_name")
+  recordedAt        String   @map("recorded_at")
+
+  inspection QualityInspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionId])
+  @@index([status])
+  @@map("haccp_checkpoint_readings")
+}
+
+model QualityException {
+  id                 String   @id
+  exceptionNumber    String   @unique @map("exception_number")
+  inspectionId       String?  @map("inspection_id")
+  shipmentId         String?  @map("shipment_id")
+  shipmentReference  String?  @map("shipment_reference")
+  haccpReadingId     String?  @map("haccp_reading_id")
+  supplierId         String?  @map("supplier_id")
+  supplierName       String?  @map("supplier_name")
+  sku                String
+  productName        String   @map("product_name")
+  internalLot        String   @map("internal_lot")
+  warehouse          String
+  location           String
+  exceptionType      String   @map("exception_type")
+  severity           String   @default("high")
+  expectedLimits     String   @map("expected_limits")
+  actualReading      String   @map("actual_reading")
+  foodSafetyImpact   String   @map("food_safety_impact")
+  responsiblePerson  String   @map("responsible_person")
+  evidenceJson       String   @default("[]") @map("evidence_json")
+  investigationNotes String?  @map("investigation_notes")
+  resolution         String?
+  status             String   @default("open")
+  detectedAt         String   @map("detected_at")
+  resolvedBy         String?  @map("resolved_by")
+  resolvedAt         String?  @map("resolved_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  inspection QualityInspection? @relation(fields: [inspectionId], references: [id], onDelete: SetNull)
+  capas      QualityCapa[]
+
+  @@index([status])
+  @@index([warehouse])
+  @@index([internalLot])
+  @@map("quality_exceptions")
+}
+
+model QualityCapa {
+  id                   String   @id
+  capaNumber           String   @unique @map("capa_number")
+  exceptionId          String?  @map("exception_id")
+  inspectionId         String?  @map("inspection_id")
+  shipmentId           String?  @map("shipment_id")
+  supplierId           String?  @map("supplier_id")
+  supplierName         String?  @map("supplier_name")
+  sku                  String?
+  productName          String?  @map("product_name")
+  internalLot          String?  @map("internal_lot")
+  warehouse            String
+  problemDescription   String   @map("problem_description")
+  rootCause            String?  @map("root_cause")
+  containmentAction    String?  @map("containment_action")
+  correctiveAction     String?  @map("corrective_action")
+  preventiveAction     String?  @map("preventive_action")
+  assignedToId         String?  @map("assigned_to_id")
+  assignedToName       String   @map("assigned_to_name")
+  targetCompletionDate String   @map("target_completion_date")
+  evidenceJson         String   @default("[]") @map("evidence_json")
+  verificationNotes    String?  @map("verification_notes")
+  effectivenessReview  String?  @map("effectiveness_review")
+  verifiedById         String?  @map("verified_by_id")
+  verifiedByName       String?  @map("verified_by_name")
+  verifiedAt           String?  @map("verified_at")
+  status               String   @default("Open")
+  closedAt             String?  @map("closed_at")
+  createdBy            String   @map("created_by")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  exception  QualityException?  @relation(fields: [exceptionId], references: [id], onDelete: SetNull)
+  inspection QualityInspection? @relation(fields: [inspectionId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([warehouse])
+  @@index([internalLot])
+  @@map("quality_capas")
+}
+
+// ----------------------------------------------------------------------------
+// 13. Module 05: Put-away (Storage Recommendation, Bin Assignment & Stock Placement)
+// ----------------------------------------------------------------------------
+
+model WarehouseZoneConfig {
+  id                  String   @id
+  zoneCode            String   @unique @map("zone_code")
+  zoneName            String   @map("zone_name")
+  warehouse           String
+  storageType         String   @default("chilled") @map("storage_type")
+  tempMinC            Float    @map("temp_min_c")
+  tempMaxC            Float    @map("temp_max_c")
+  allowedCategories   String   @default("[]") @map("allowed_categories")
+  segregationRules    String?  @map("segregation_rules")
+  maxCapacityCases    Float    @default(1000) @map("max_capacity_cases")
+  maxWeightKg         Float    @default(15000) @map("max_weight_kg")
+  status              String   @default("active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@index([warehouse])
+  @@index([storageType])
+  @@map("warehouse_zones")
+}
+
+model WarehouseBinConfig {
+  id                      String   @id
+  binCode                 String   @unique @map("bin_code")
+  barcode                 String   @unique
+  zoneId                  String   @map("zone_id")
+  zoneCode                String   @map("zone_code")
+  warehouse               String
+  aisle                   String   @default("A1")
+  rack                    String   @default("R1")
+  level                   String   @default("L1")
+  storageType             String   @default("chilled") @map("storage_type")
+  tempMinC                Float    @map("temp_min_c")
+  tempMaxC                Float    @map("temp_max_c")
+  allowedCategories       String   @default("[]") @map("allowed_categories")
+  restrictedAllergens     String   @default("[]") @map("restricted_allergens")
+  dedicatedCategory       String?  @map("dedicated_category")
+  allowMixedSku           Int      @default(1) @map("allow_mixed_sku")
+  allowMixedBatch         Int      @default(1) @map("allow_mixed_batch")
+  maxCapacityCases        Float    @default(200) @map("max_capacity_cases")
+  maxWeightKg             Float    @default(2500) @map("max_weight_kg")
+  currentOccupiedCases    Float    @default(0) @map("current_occupied_cases")
+  currentOccupiedWeightKg Float    @default(0) @map("current_occupied_weight_kg")
+  status                  String   @default("active")
+  notes                   String?
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@index([warehouse, status])
+  @@index([zoneCode])
+  @@map("warehouse_bins")
+}
+
+model BinStockPlacement {
+  id            String   @id
+  binId         String   @map("bin_id")
+  binCode       String   @map("bin_code")
+  zoneCode      String   @map("zone_code")
+  warehouse     String
+  sku           String
+  productName   String   @map("product_name")
+  category      String
+  internalLot   String   @map("internal_lot")
+  supplierBatch String?  @map("supplier_batch")
+  quantityCases Float    @default(0) @map("quantity_cases")
+  weightKg      Float    @default(0) @map("weight_kg")
+  uom           String   @default("CASE")
+  expiryDate    String   @map("expiry_date")
+  qualityStatus String   @default("released") @map("quality_status")
+  tempC         Float?   @map("temp_c")
+  placedAt      String   @map("placed_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([binCode, sku, internalLot])
+  @@index([binCode])
+  @@index([internalLot])
+  @@index([warehouse])
+  @@map("bin_stock_placements")
+}
+
+model PutawayTask {
+  id                  String   @id
+  taskNumber          String   @unique @map("task_number")
+  shipmentId          String?  @map("shipment_id")
+  shipmentReference   String?  @map("shipment_reference")
+  asnReference        String?  @map("asn_reference")
+  purchaseOrderId     String?  @map("purchase_order_id")
+  supplierId          String?  @map("supplier_id")
+  supplierName        String?  @map("supplier_name")
+  inspectionId        String?  @map("inspection_id")
+  sku                 String
+  productName         String   @map("product_name")
+  category            String   @default("Seafood")
+  supplierBatch       String   @map("supplier_batch")
+  internalLot         String   @map("internal_lot")
+  warehouse           String
+  receivingLocation   String   @default("RCV-STAGE-01") @map("receiving_location")
+  acceptedQty         Float    @map("accepted_qty")
+  placedQty           Float    @default(0) @map("placed_qty")
+  remainingQty        Float    @map("remaining_qty")
+  uom                 String   @default("CASE")
+  expectedWeightKg    Float?   @map("expected_weight_kg")
+  actualWeightKg      Float?   @map("actual_weight_kg")
+  placedWeightKg      Float    @default(0) @map("placed_weight_kg")
+  manufactureDate     String?  @map("manufacture_date")
+  expiryDate          String   @map("expiry_date")
+  currentTempC        Float?   @map("current_temp_c")
+  tempStatus          String   @default("pass") @map("temp_status")
+  recommendedZone     String?  @map("recommended_zone")
+  recommendedBin      String?  @map("recommended_bin")
+  recommendationReason String? @map("recommendation_reason")
+  overrideBin         String?  @map("override_bin")
+  overrideReason      String?  @map("override_reason")
+  overriddenBy        String?  @map("overridden_by")
+  overriddenAt        String?  @map("overridden_at")
+  assignedOperatorId  String?  @map("assigned_operator_id")
+  assignedOperatorName String? @map("assigned_operator_name")
+  priority            String   @default("Normal")
+  status              String   @default("Ready for Put-away")
+  blockedReason       String?  @map("blocked_reason")
+  notes               String?
+  createdAt           DateTime @default(now()) @map("created_at")
+  startedAt           String?  @map("started_at")
+  completedAt         String?  @map("completed_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  placements PutawayPlacement[]
+  scans      PutawayScanLog[]
+
+  @@index([status])
+  @@index([warehouse])
+  @@index([internalLot])
+  @@index([sku])
+  @@map("putaway_tasks")
+}
+
+model PutawayPlacement {
+  id                   String   @id
+  taskId               String   @map("task_id")
+  taskNumber           String   @map("task_number")
+  sku                  String
+  productName          String   @map("product_name")
+  internalLot          String   @map("internal_lot")
+  supplierBatch        String   @map("supplier_batch")
+  warehouse            String
+  sourceLocation       String   @map("source_location")
+  destinationZone      String   @map("destination_zone")
+  destinationBin       String   @map("destination_bin")
+  expectedQty          Float    @map("expected_qty")
+  placedQty            Float    @map("placed_qty")
+  remainingQtyAfter    Float    @map("remaining_qty_after")
+  uom                  String   @default("CASE")
+  packagesCount        Int      @default(1) @map("packages_count")
+  expectedWeightKg     Float?   @map("expected_weight_kg")
+  actualWeightKg       Float    @map("actual_weight_kg")
+  weightVarianceKg     Float    @default(0) @map("weight_variance_kg")
+  weightVariancePct    Float    @default(0) @map("weight_variance_pct")
+  tempAtPutawayC       Float?   @map("temp_at_putaway_c")
+  tempStatus           String   @default("pass") @map("temp_status")
+  scanVerifiedTask     Int      @default(0) @map("scan_verified_task")
+  scanVerifiedSku      Int      @default(0) @map("scan_verified_sku")
+  scanVerifiedLot      Int      @default(0) @map("scan_verified_lot")
+  scanVerifiedBin      Int      @default(0) @map("scan_verified_bin")
+  manualEntryFallback  Int      @default(0) @map("manual_entry_fallback")
+  isOverride           Int      @default(0) @map("is_override")
+  overrideReason       String?  @map("override_reason")
+  notes                String?
+  operatorId           String   @map("operator_id")
+  operatorName         String   @map("operator_name")
+  placedAt             String   @map("placed_at")
+
+  task PutawayTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([internalLot])
+  @@index([destinationBin])
+  @@map("putaway_placements")
+}
+
+model PutawayScanLog {
+  id            String @id
+  taskId        String @map("task_id")
+  scanType      String @map("scan_type")
+  scannedValue  String @map("scanned_value")
+  expectedValue String? @map("expected_value")
+  isManual      Int    @default(0) @map("is_manual")
+  status        String
+  failureReason String? @map("failure_reason")
+  operatorId    String @map("operator_id")
+  operatorName  String @map("operator_name")
+  scannedAt     String @map("scanned_at")
+
+  task PutawayTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("putaway_scan_logs")
+}
+
+// ----------------------------------------------------------------------------
+// 14. Module 06: Stock Intelligence (FEFO, Reservations, Shelf-Life, Cycle Counting & Adjustments)
+// ----------------------------------------------------------------------------
+
+model ShelfLifeRule {
+  id                   String   @id
+  ruleCode             String   @unique @map("rule_code")
+  ruleScope            String   @default("product") @map("rule_scope")
+  sku                  String?
+  productName          String?  @map("product_name")
+  category             String?
+  customerId           String?  @map("customer_id")
+  customerName         String?  @map("customer_name")
+  customerSegment      String?  @map("customer_segment")
+  minRemainingDays     Int      @default(2) @map("min_remaining_days")
+  minRemainingPct      Float?   @map("min_remaining_pct")
+  enforceAtAllocation  Int      @default(1) @map("enforce_at_allocation")
+  enforceAtPick        Int      @default(1) @map("enforce_at_pick")
+  allowManagerOverride Int      @default(1) @map("allow_manager_override")
+  notes                String?
+  active               Int      @default(1)
+  createdBy            String   @map("created_by")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@index([sku])
+  @@index([customerId])
+  @@map("shelf_life_rules")
+}
+
+model StockReservation {
+  id                       String   @id
+  reservationNumber        String   @unique @map("reservation_number")
+  orderId                  String?  @map("order_id")
+  orderNumber              String?  @map("order_number")
+  orderLineId              String?  @map("order_line_id")
+  customerId               String?  @map("customer_id")
+  customerName             String?  @map("customer_name")
+  sku                      String
+  productName              String   @map("product_name")
+  internalLot              String   @map("internal_lot")
+  supplierBatch            String?  @map("supplier_batch")
+  warehouse                String
+  zone                     String?
+  binCode                  String?  @map("bin_code")
+  requestedCases           Float    @map("requested_cases")
+  reservedCases            Float    @map("reserved_cases")
+  reservedWeightKg         Float    @default(0) @map("reserved_weight_kg")
+  uom                      String   @default("case")
+  deliveryDate             String?  @map("delivery_date")
+  minShelfLifeDaysRequired Int      @default(0) @map("min_shelf_life_days_required")
+  daysRemainingAtDelivery  Int?     @map("days_remaining_at_delivery")
+  fefoRank                 Int?     @map("fefo_rank")
+  selectionReason          String?  @map("selection_reason")
+  status                   String   @default("Active")
+  pickTaskId               String?  @map("pick_task_id")
+  expiresAt                String   @map("expires_at")
+  releasedReason           String?  @map("released_reason")
+  createdBy                String   @map("created_by")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  events StockReservationEvent[]
+
+  @@index([internalLot])
+  @@index([sku])
+  @@index([orderNumber])
+  @@index([status])
+  @@index([warehouse])
+  @@map("stock_reservations")
+}
+
+model StockReservationEvent {
+  id                String   @id
+  reservationId     String   @map("reservation_id")
+  reservationNumber String   @map("reservation_number")
+  eventType         String   @map("event_type")
+  previousStatus    String?  @map("previous_status")
+  newStatus         String   @map("new_status")
+  quantityCases     Float    @map("quantity_cases")
+  reason            String?
+  actorId           String   @map("actor_id")
+  actorName         String   @map("actor_name")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  reservation StockReservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId])
+  @@map("stock_reservation_events")
+}
+
+model FefoAllocationLog {
+  id                String   @id
+  allocationRef     String   @map("allocation_ref")
+  orderNumber       String?  @map("order_number")
+  customerId        String?  @map("customer_id")
+  customerName      String?  @map("customer_name")
+  sku               String
+  warehouse         String?
+  deliveryDate      String   @map("delivery_date")
+  requestedCases    Float    @map("requested_cases")
+  allocatedCases    Float    @map("allocated_cases")
+  minShelfLifeDays  Int      @default(0) @map("min_shelf_life_days")
+  internalLot       String   @map("internal_lot")
+  expiryDate        String   @map("expiry_date")
+  daysAtDelivery    Int      @map("days_at_delivery")
+  decision          String
+  lotAllocatedCases Float    @default(0) @map("lot_allocated_cases")
+  reasonCode        String   @map("reason_code")
+  reasonDetail      String   @map("reason_detail")
+  actorEmail        String   @map("actor_email")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([allocationRef])
+  @@index([sku])
+  @@index([internalLot])
+  @@map("fefo_allocation_logs")
+}
+
+model CycleCount {
+  id                String   @id
+  countNumber       String   @unique @map("count_number")
+  countType         String   @default("scheduled") @map("count_type")
+  warehouse         String
+  zone              String?
+  binCode           String   @map("bin_code")
+  sku               String
+  productName       String   @map("product_name")
+  internalLot       String   @map("internal_lot")
+  supplierBatch     String?  @map("supplier_batch")
+  isBlind           Int      @default(1) @map("is_blind")
+  expectedCases     Float    @map("expected_cases")
+  expectedWeightKg  Float    @map("expected_weight_kg")
+  countedCases      Float?   @map("counted_cases")
+  countedWeightKg   Float?   @map("counted_weight_kg")
+  varianceCases     Float?   @map("variance_cases")
+  varianceWeightKg  Float?   @map("variance_weight_kg")
+  unitWeightKg      Float    @default(5.0) @map("unit_weight_kg")
+  barcodeScanned    String?  @map("barcode_scanned")
+  scanVerified      Int      @default(0) @map("scan_verified")
+  status            String   @default("Assigned")
+  recountNumber     Int      @default(0) @map("recount_number")
+  assignedToId      String?  @map("assigned_to_id")
+  assignedToName    String   @map("assigned_to_name")
+  scheduledDate     String   @map("scheduled_date")
+  countedById       String?  @map("counted_by_id")
+  countedByName     String?  @map("counted_by_name")
+  countedAt         String?  @map("counted_at")
+  approvedById      String?  @map("approved_by_id")
+  approvedByName    String?  @map("approved_by_name")
+  approvedAt        String?  @map("approved_at")
+  approvalNotes     String?  @map("approval_notes")
+  adjustmentId      String?  @map("adjustment_id")
+  discrepancyReason String?  @map("discrepancy_reason")
+  notes             String?
+  createdBy         String   @map("created_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  history CycleCountHistory[]
+
+  @@index([warehouse])
+  @@index([status])
+  @@index([internalLot])
+  @@map("cycle_counts")
+}
+
+model CycleCountHistory {
+  id              String   @id
+  cycleCountId    String   @map("cycle_count_id")
+  countNumber     String   @map("count_number")
+  action          String
+  recountNumber   Int      @default(0) @map("recount_number")
+  expectedCases   Float?   @map("expected_cases")
+  countedCases    Float?   @map("counted_cases")
+  varianceCases   Float?   @map("variance_cases")
+  countedWeightKg Float?   @map("counted_weight_kg")
+  notes           String?
+  actorId         String   @map("actor_id")
+  actorName       String   @map("actor_name")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  cycleCount CycleCount @relation(fields: [cycleCountId], references: [id], onDelete: Cascade)
+
+  @@index([cycleCountId])
+  @@map("cycle_count_history")
+}
+
+model StockAdjustment {
+  id                 String   @id
+  adjustmentNumber   String   @unique @map("adjustment_number")
+  warehouse          String
+  zone               String?
+  binCode            String?  @map("bin_code")
+  targetBinCode      String?  @map("target_bin_code")
+  sku                String
+  productName        String   @map("product_name")
+  internalLot        String   @map("internal_lot")
+  supplierBatch      String?  @map("supplier_batch")
+  adjustmentType     String   @map("adjustment_type")
+  targetStatus       String   @default("Available") @map("target_status")
+  originalCases      Float    @map("original_cases")
+  actualCases        Float    @map("actual_cases")
+  differenceCases    Float    @map("difference_cases")
+  originalWeightKg   Float    @map("original_weight_kg")
+  actualWeightKg     Float    @map("actual_weight_kg")
+  differenceWeightKg Float    @map("difference_weight_kg")
+  unitCostCents      Int      @default(0) @map("unit_cost_cents")
+  valueImpactCents   Int      @default(0) @map("value_impact_cents")
+  requiresApproval   Int      @default(0) @map("requires_approval")
+  status             String   @default("Pending Approval")
+  reason             String
+  evidenceJson       String   @default("[]") @map("evidence_json")
+  cycleCountId       String?  @map("cycle_count_id")
+  movementId         String?  @map("movement_id")
+  idempotencyKey     String?  @unique @map("idempotency_key")
+  requestedById      String   @map("requested_by_id")
+  requestedByName    String   @map("requested_by_name")
+  requestedAt        String   @map("requested_at")
+  approvedById       String?  @map("approved_by_id")
+  approvedByName     String?  @map("approved_by_name")
+  approvedAt         String?  @map("approved_at")
+  approvalNotes      String?  @map("approval_notes")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@index([warehouse])
+  @@index([status])
+  @@index([internalLot])
+  @@map("stock_adjustments")
+}
+
+
+// ----------------------------------------------------------------------------
+// 15. Module 13: Fast-Food Store / Vendor Monitoring
+// ----------------------------------------------------------------------------
+
+model StoreAccountHistory {
+  id             String   @id @default(uuid())
+  storeId        String   @map("store_id")
+  action         String
+  previousStatus String?  @map("previous_status")
+  newStatus      String?  @map("new_status")
+  notes          String?
+  actorId        String   @map("actor_id")
+  actorName      String   @map("actor_name")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([storeId])
+  @@map("store_account_history")
+}
+
+model StoreConsumptionConfig {
+  id                          String   @id @default(uuid())
+  storeId                     String   @map("store_id")
+  sku                         String
+  estimationMethod            String   @default("rolling_delivery_rate") @map("estimation_method")
+  assumedWastePct             Float    @default(2.0) @map("assumed_waste_pct")
+  dailyBaselineCases          Float?   @map("daily_baseline_cases")
+  safetyBufferCases           Float    @default(2.0) @map("safety_buffer_cases")
+  replenishmentThresholdCases Float    @default(5.0) @map("replenishment_threshold_cases")
+  notes                       String?
+  updatedBy                   String   @map("updated_by")
+  updatedAt                   DateTime @updatedAt @map("updated_at")
+
+  @@unique([storeId, sku])
+  @@index([storeId])
+  @@map("store_consumption_configs")
+}
+
+model StorePosIntegration {
+  id                   String   @id @default(uuid())
+  storeId              String   @unique @map("store_id")
+  providerName         String   @map("provider_name")
+  externalStoreRef     String?  @map("external_store_ref")
+  connectionStatus     String   @default("unconfigured") @map("connection_status")
+  syncSalesEnabled     Int      @default(0) @map("sync_sales_enabled")
+  syncInventoryEnabled Int      @default(0) @map("sync_inventory_enabled")
+  lastSyncAt           String?  @map("last_sync_at")
+  lastSyncStatus       String?  @map("last_sync_status")
+  errorMessage         String?  @map("error_message")
+  configJson           String   @default("{}") @map("config_json")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@index([storeId])
+  @@map("store_pos_integrations")
+}
+
+model StorePosSkuMapping {
+  id              String   @id @default(uuid())
+  storeId         String   @map("store_id")
+  providerName    String   @map("provider_name")
+  posItemCode     String   @map("pos_item_code")
+  posItemName     String   @map("pos_item_name")
+  distributorSku  String   @map("distributor_sku")
+  productName     String   @map("product_name")
+  mappingType     String   @default("direct_1to1") @map("mapping_type")
+  casesPerPosUnit Float    @default(0.05) @map("cases_per_pos_unit")
+  kgPerPosUnit    Float    @default(0.25) @map("kg_per_pos_unit")
+  active          Int      @default(1)
+  createdBy       String   @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@unique([storeId, posItemCode, distributorSku])
+  @@index([storeId])
+  @@map("store_pos_sku_mappings")
+}
+
+model StorePosImportBatch {
+  id                    String   @id @default(uuid())
+  importRef             String   @unique @map("import_ref")
+  storeId               String   @map("store_id")
+  providerName          String   @map("provider_name")
+  importType            String   @map("import_type")
+  periodStart           String   @map("period_start")
+  periodEnd             String   @map("period_end")
+  recordsSubmitted      Int      @default(0) @map("records_submitted")
+  recordsImported       Int      @default(0) @map("records_imported")
+  duplicatesSkipped     Int      @default(0) @map("duplicates_skipped")
+  validationErrorsCount Int      @default(0) @map("validation_errors_count")
+  status                String   @default("completed")
+  errorDetailsJson      String   @default("[]") @map("error_details_json")
+  importedBy            String   @map("imported_by")
+  importedAt            DateTime @default(now()) @map("imported_at")
+
+  @@index([storeId])
+  @@map("store_pos_import_batches")
+}
+
+model StorePosTransaction {
+  id                   String   @id @default(uuid())
+  storeId              String   @map("store_id")
+  importBatchId        String   @map("import_batch_id")
+  externalTxId         String   @map("external_tx_id")
+  transactionDate      String   @map("transaction_date")
+  posItemCode          String   @map("pos_item_code")
+  posItemName          String   @map("pos_item_name")
+  distributorSku       String   @map("distributor_sku")
+  quantitySold         Float    @map("quantity_sold")
+  derivedCasesConsumed Float    @map("derived_cases_consumed")
+  derivedKgConsumed    Float    @map("derived_kg_consumed")
+  consumptionType      String   @default("pos_sales_derived") @map("consumption_type")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@unique([storeId, externalTxId])
+  @@index([storeId, distributorSku])
+  @@map("store_pos_transactions")
+}
+
+model StoreInventorySnapshot {
+  id                       String   @id @default(uuid())
+  snapshotRef              String   @unique @map("snapshot_ref")
+  storeId                  String   @map("store_id")
+  sku                      String
+  productName              String   @map("product_name")
+  periodStart              String   @map("period_start")
+  periodEnd                String   @map("period_end")
+  openingStockCases        Float    @map("opening_stock_cases")
+  deliveriesReceivedCases  Float    @map("deliveries_received_cases")
+  recordedConsumptionCases Float    @map("recorded_consumption_cases")
+  wasteSpoilageCases       Float    @default(0) @map("waste_spoilage_cases")
+  adjustmentsCases         Float    @default(0) @map("adjustments_cases")
+  expectedClosingCases     Float    @map("expected_closing_cases")
+  actualClosingCases       Float?   @map("actual_closing_cases")
+  varianceCases            Float?   @map("variance_cases")
+  reconciliationStatus     String   @default("reconciled") @map("reconciliation_status")
+  source                   String   @default("store_declaration")
+  recordedBy               String   @map("recorded_by")
+  recordedAt               DateTime @default(now()) @map("recorded_at")
+  notes                    String?
+
+  @@index([storeId, sku])
+  @@map("store_inventory_snapshots")
+}
+
+model StoreMonitoringAlert {
+  id                 String   @id @default(uuid())
+  alertRef           String   @unique @map("alert_ref")
+  storeId            String   @map("store_id")
+  storeName          String   @map("store_name")
+  alertType          String   @map("alert_type")
+  severity           String   @default("warning")
+  title              String
+  detail             String
+  supportingDataJson String   @default("{}") @map("supporting_data_json")
+  status             String   @default("open")
+  createdAt          DateTime @default(now()) @map("created_at")
+  acknowledgedBy     String?  @map("acknowledged_by")
+  acknowledgedAt     String?  @map("acknowledged_at")
+
+  @@index([storeId, status])
+  @@map("store_monitoring_alerts")
+}

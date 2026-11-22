@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ascentra-food-distribution-erp-api"
+version = "1.0.0"
+description = "Ascentra AI-Powered Food Distribution ERP API"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.32.1",
+    "pydantic==2.10.4",
+    "pydantic-settings==2.7.0",
+    "python-multipart==0.0.19",
+    "orjson==3.10.12",
+    "python-dateutil==2.9.0.post0",
+    "PyJWT==2.10.1",
+    "passlib[bcrypt]==1.7.4",
+    "httpx==0.28.1",
+    "aiosqlite==0.20.0",
+    "SQLAlchemy==2.0.36",
+    "email-validator==2.2.0",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-q"

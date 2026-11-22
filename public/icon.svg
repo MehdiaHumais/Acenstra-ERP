@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ascentra">
+  <rect width="512" height="512" rx="112" fill="#123249"/>
+  <path d="M146 344 L256 148 L366 344" fill="none" stroke="#C8F169" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M196 300 H316" stroke="#EDF3F7" stroke-width="32" stroke-linecap="round"/>
+</svg>
