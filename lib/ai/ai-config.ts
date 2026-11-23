@@ -7,8 +7,12 @@ import { OmniRouteGatewayConfig, OmniRouteModelAlias, AiProviderType } from "./a
 
 const DEFAULT_BASE_URL = "http://77.237.239.69:20128/v1";
 const DEFAULT_MODEL: OmniRouteModelAlias = "GLM-5" as OmniRouteModelAlias;
-const DEFAULT_TIMEOUT_MS = 35000;
-const DEFAULT_MAX_RETRIES = 2;
+// Keep AI calls responsive: a slow/unreachable gateway must hand control back
+// to the local grounded fallback quickly instead of blocking the request for
+// over a minute across multiple timed-out retries.
+const DEFAULT_TIMEOUT_MS = 10000;
+const DEFAULT_MAX_RETRIES = 1;
+const DEFAULT_CIRCUIT_COOLDOWN_MS = 30000;
 
 /**
  * Task-specific model alias overrides mapping.
@@ -38,6 +42,12 @@ export function maskApiKey(apiKey: string | undefined | null): string {
   return `${start}...${end}`;
 }
 
+/** Parses a non-negative env integer; unlike `||`, this honors an explicit 0. */
+function parseNonNegativeInt(value: string | undefined, fallback: number, allowZero = false): number {
+  const parsed = parseInt(value ?? "", 10);
+  return Number.isFinite(parsed) && parsed >= (allowZero ? 0 : 1) ? parsed : fallback;
+}
+
 /**
  * Retrieves the live OmniRoute server-side configuration from process.env.
  */
@@ -46,8 +56,12 @@ export function getOmniRouteConfig(): OmniRouteGatewayConfig {
   const baseUrl = (process.env.OMNIROUTE_BASE_URL || DEFAULT_BASE_URL).replace(/\/+$/, "");
   const apiKey = (process.env.OMNIROUTE_API_KEY || "").trim();
   const defaultModel = (process.env.OMNIROUTE_MODEL || DEFAULT_MODEL) as OmniRouteModelAlias;
-  const timeoutMs = parseInt(process.env.OMNIROUTE_TIMEOUT_MS || `${DEFAULT_TIMEOUT_MS}`, 10) || DEFAULT_TIMEOUT_MS;
-  const maxRetries = parseInt(process.env.OMNIROUTE_MAX_RETRIES || `${DEFAULT_MAX_RETRIES}`, 10) || DEFAULT_MAX_RETRIES;
+  const timeoutMs = parseNonNegativeInt(process.env.OMNIROUTE_TIMEOUT_MS, DEFAULT_TIMEOUT_MS);
+  const maxRetries = parseNonNegativeInt(process.env.OMNIROUTE_MAX_RETRIES, DEFAULT_MAX_RETRIES, true);
+  const circuitCooldownMs = parseNonNegativeInt(
+    process.env.OMNIROUTE_CIRCUIT_COOLDOWN_MS,
+    DEFAULT_CIRCUIT_COOLDOWN_MS
+  );
   const enabled = process.env.OMNIROUTE_ENABLED !== "false" && process.env.AI_ENABLED !== "false";
 
   // Parse any task-specific overrides from env e.g. OMNIROUTE_TASK_REASONING_MODEL
@@ -67,6 +81,7 @@ export function getOmniRouteConfig(): OmniRouteGatewayConfig {
     enabled,
     timeoutMs,
     maxRetries,
+    circuitCooldownMs,
   };
 }
 

@@ -90,7 +90,7 @@ export async function discoverOmniRouteModels(forceRefresh = false): Promise<Omn
 
   const url = `${config.baseUrl}/models`;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000); // 20s timeout for model catalog
+  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
 
   try {
     const startTime = Date.now();
@@ -132,7 +132,9 @@ export async function discoverOmniRouteModels(forceRefresh = false): Promise<Omn
     }
     const err = error as { name?: string; message?: string };
     if (err.name === "AbortError") {
-      throw new OmniRouteTimeoutError("Timed out while fetching OmniRoute model catalog (20s).");
+      throw new OmniRouteTimeoutError(
+        `Timed out while fetching OmniRoute model catalog (${config.timeoutMs}ms).`
+      );
     }
     throw new OmniRouteConnectionError(
       `Failed to reach OmniRoute models endpoint: ${err.message || String(error)}`

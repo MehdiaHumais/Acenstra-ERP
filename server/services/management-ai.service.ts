@@ -1600,7 +1600,7 @@ JSON Schema:
       }>(JSON.stringify(sanitizedMetricsPayload), systemPrompt, {
         model: selectedModel,
         temperature: 0.2,
-        timeoutMs: 35000,
+        // Respect the configured timeout so failures fall back quickly.
       });
 
       if (

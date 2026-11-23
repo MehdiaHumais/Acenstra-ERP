@@ -31,6 +31,34 @@ import { aiLogger } from "./ai-logging";
 import { discoverOmniRouteModels } from "./ai-models";
 
 /**
+ * Lightweight circuit breaker. When the gateway is unreachable (or keeps
+ * timing out), repeated requests must not each burn the full retry budget —
+ * callers fall back to local grounded answers immediately while the circuit
+ * is open, then probe the gateway again after the cooldown elapses.
+ */
+const gatewayCircuit = {
+  openUntil: 0,
+  lastError: "" as string,
+};
+
+function circuitOpen(): boolean {
+  return Date.now() < gatewayCircuit.openUntil;
+}
+
+function openCircuit(error: Error, cooldownMs: number): void {
+  gatewayCircuit.openUntil = Date.now() + cooldownMs;
+  gatewayCircuit.lastError = error.message;
+  aiLogger.warn(`OmniRoute circuit opened for ${cooldownMs}ms: ${error.message}`);
+}
+
+function closeCircuit(): void {
+  if (gatewayCircuit.openUntil !== 0) {
+    gatewayCircuit.openUntil = 0;
+    gatewayCircuit.lastError = "";
+  }
+}
+
+/**
  * Parses Server-Sent Events (SSE) body and reconstructs complete completion text and metadata.
  */
 async function parseSseStream(
@@ -110,6 +138,14 @@ export async function omniRouteChatCompletion(
     throw new OmniRouteAuthError("OmniRoute API key is not configured in environment (OMNIROUTE_API_KEY).");
   }
 
+  // If the gateway recently failed, fail fast so callers can use their local
+  // fallback immediately instead of waiting through another full timeout.
+  if (circuitOpen()) {
+    throw new OmniRouteConnectionError(
+      `OmniRoute circuit open (cooldown active): ${gatewayCircuit.lastError || "gateway unavailable"}`
+    );
+  }
+
   const model = options.model || config.defaultModel;
   const timeoutMs = options.timeoutMs ?? config.timeoutMs;
   const maxRetries = options.maxRetries ?? config.maxRetries;
@@ -159,7 +195,8 @@ export async function omniRouteChatCompletion(
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutHandle);
+      // Keep the deadline armed until the entire body (including SSE stream)
+      // has been consumed. A gateway can return headers quickly then stall.
       const latencyMs = Date.now() - startTime;
       const routeClass = response.headers.get("x-omniroute-route-class") || undefined;
       const modelResolvedHeader = response.headers.get("x-omniroute-model-resolved") || undefined;
@@ -211,6 +248,14 @@ export async function omniRouteChatCompletion(
       // Case 1: Streamed response (SSE)
       if (contentType.includes("text/event-stream") && response.body) {
         const parsed = await parseSseStream(response.body);
+        // A degraded gateway may send only keepalive chunks and no completion
+        // text. Treat that as a failure so the circuit opens and callers fall
+        // back immediately instead of silently waiting on every request.
+        if (!parsed.text.trim()) {
+          throw new OmniRouteConnectionError(
+            `OmniRoute returned an empty completion (model: ${model}); gateway stream produced no content.`
+          );
+        }
         const approxPromptTokens = Math.ceil(JSON.stringify(messages).length / 4);
         const approxCompletionTokens = Math.ceil(parsed.text.length / 4);
 
@@ -247,11 +292,17 @@ export async function omniRouteChatCompletion(
           resolvedModel: result.omniroute_metadata?.model_resolved,
         });
 
+        closeCircuit();
         return result;
       }
 
       // Case 2: Standard JSON response
       const json = (await response.json()) as OmniRouteChatCompletionResponse;
+      if (!json.choices?.[0]?.message?.content?.trim()) {
+        throw new OmniRouteConnectionError(
+          `OmniRoute returned an empty completion (model: ${model}); no message content.`
+        );
+      }
       json.omniroute_metadata = {
         route_class: routeClass,
         latency_ms: latencyMs,
@@ -264,6 +315,7 @@ export async function omniRouteChatCompletion(
         resolvedModel: json.omniroute_metadata?.model_resolved,
       });
 
+      closeCircuit();
       return json;
     } catch (error: unknown) {
       clearTimeout(timeoutHandle);
@@ -284,13 +336,19 @@ export async function omniRouteChatCompletion(
         continue;
       }
       break;
+    } finally {
+      clearTimeout(timeoutHandle);
     }
   }
 
-  throw (
-    lastError ||
-    new OmniRouteConnectionError("Failed to complete OmniRoute request after multiple attempts.")
-  );
+  const failure =
+    lastError || new OmniRouteConnectionError("Failed to complete OmniRoute request after multiple attempts.");
+  // Auth errors are configuration issues, not gateway unavailability — don't
+  // open the circuit for those. Everything else (timeout, network, 5xx) does.
+  if (!(failure instanceof OmniRouteAuthError)) {
+    openCircuit(failure, config.circuitCooldownMs);
+  }
+  throw failure;
 }
 
 /**
@@ -392,7 +450,7 @@ export async function testOmniRouteConnection(): Promise<OmniRouteConnectionTest
       model: config.defaultModel,
       max_tokens: 10,
       temperature: 0.1,
-      timeoutMs: 25000,
+      timeoutMs: config.timeoutMs,
     });
 
     const latencyMs = Date.now() - startTime;

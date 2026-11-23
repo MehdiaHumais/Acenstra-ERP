@@ -111,6 +111,8 @@ export interface OmniRouteGatewayConfig {
   enabled: boolean;
   timeoutMs: number;
   maxRetries: number;
+  /** How long to skip the gateway after a failure before trying again. */
+  circuitCooldownMs: number;
 }
 
 export interface OmniRouteConnectionTestResult {

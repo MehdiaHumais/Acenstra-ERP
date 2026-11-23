@@ -396,7 +396,9 @@ ${workflowsDoc}`;
       const completion = await omniRouteChatCompletion(messages, {
         model: config.defaultModel || "GLM-5",
         temperature: 0.2,
-        timeoutMs: 35000,
+        // Use the configured (short) timeout so an unreachable gateway hands
+        // back to the local fallback quickly.
+        timeoutMs: config.timeoutMs,
       });
 
       const reply = completion.choices?.[0]?.message?.content?.trim();
@@ -451,6 +453,14 @@ ${workflowsDoc}`;
     localReply = `**Italian SdI Electronic Invoicing:**\n\n` +
       `• Upon confirmed delivery, the ERP automatically generates invoices reflecting actual delivered and catch-weighted quantities.\n` +
       `• Invoices are converted to official **FatturaPA v1.2.2 XML** and transmitted to the Italian tax agency's **Sistema di Interscambio (SdI)** with 10-year statutory archiving.`;
+  } else if (queryLower.includes("product") || queryLower.includes("sku")) {
+    localReply = `We currently have **${snapshot.stats.totalProducts} products** in the catalogue.\n\n` +
+      `Sample SKUs:\n` +
+      snapshot.topProducts.slice(0, 5).map((p) => `• **${p.sku}** — ${p.name} (${p.category}, ${p.storageTemp})`).join("\n");
+  } else if (queryLower.includes("lot") || queryLower.includes("stock") || queryLower.includes("inventory")) {
+    localReply = `We currently track **${snapshot.stats.totalLots} inventory lots**.\n\n` +
+      `Recent batches:\n` +
+      snapshot.inventoryStatus.slice(0, 5).map((l) => `• **${l.batchId}** — ${l.productName}: ${l.currentQuantity} available (expires ${l.expiryDate})`).join("\n");
   } else if (queryLower.includes("how it works") || queryLower.includes("system") || queryLower.includes("architecture")) {
     localReply = `Ascentra ERP connects the entire food distribution chain across 10 stages:\n\n` +
       `1. **Products & Procurement** (Catalogue, catch-weight, supplier POs)\n` +

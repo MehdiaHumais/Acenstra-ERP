@@ -3,6 +3,15 @@ import path from "node:path";
 import { openSqliteDatabase, SqliteDatabaseSync } from "@/server/db/sqlite-driver";
 import { hashPassword } from "@/server/security/crypto";
 
+/**
+ * `next build` starts several static-generation workers that import API routes
+ * and open this database in separate processes. Running the idempotent startup
+ * seeds in every worker races for SQLite write locks ("database is locked").
+ * A build must never mutate the database — seeding runs on the first real
+ * server start instead.
+ */
+const IS_NEXT_BUILD = process.env.NEXT_PHASE === "phase-production-build";
+
 declare global {
   // eslint-disable-next-line no-var
   var __ascentraDbInstance: SqliteDatabaseSync | undefined;
@@ -3249,6 +3258,9 @@ export function getDb(): SqliteDatabaseSync {
   try {
     db.exec("PRAGMA journal_mode = WAL;");
     db.exec("PRAGMA foreign_keys = ON;");
+    // Wait briefly for another process to release a write lock instead of
+    // failing immediately (build workers / multiple server instances).
+    db.exec("PRAGMA busy_timeout = 10000;");
   } catch {
     // ignore
   }
@@ -3787,6 +3799,18 @@ export function getDb(): SqliteDatabaseSync {
     }
   }
 
+  if (!IS_NEXT_BUILD) enforceStartupData(db, dbPath);
+
+  global.__ascentraDbInstance = db;
+  (global as any).__ascentraSchemaSynced = true;
+  return db;
+}
+
+/**
+ * Idempotent startup data enforcement. Kept out of `getDb()` so build workers
+ * can open the database read-only without replaying all of these writes.
+ */
+function enforceStartupData(db: SqliteDatabaseSync, dbPath: string): void {
   if (process.env.SEED_DEMO_DATA === "true" || dbPath === ":memory:") {
     seedDatabase(db);
   }
@@ -3867,9 +3891,6 @@ export function getDb(): SqliteDatabaseSync {
   seedExceptionsAndRecallModule(db);
   seedManagementAndAiModule(db);
   seedStoreMonitoringModule(db);
-  global.__ascentraDbInstance = db;
-  (global as any).__ascentraSchemaSynced = true;
-  return db;
 }
 
 export function seedFinanceModule(db: SqliteDatabaseSync): void {
