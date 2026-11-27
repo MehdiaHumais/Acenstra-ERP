@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Truck,
   Wifi,
@@ -83,6 +83,16 @@ export function DriverPwa() {
   const [excCases, setExcCases] = useState("1");
   const [excAction, setExcAction] = useState("return_to_warehouse");
 
+  // Non-blocking feedback for queued actions
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = useCallback((message: string) => setToast(message), []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   // Load offline queue from localStorage on mount
   useEffect(() => {
     try {
@@ -151,7 +161,7 @@ export function DriverPwa() {
     if (isOnline) {
       setTimeout(() => triggerSync(), 100);
     } else {
-      alert(`Offline mode: Action "${fullAction.label}" queued locally.`);
+      showToast(`Offline mode: Action "${fullAction.label}" queued locally.`);
     }
   }
 
@@ -177,6 +187,60 @@ export function DriverPwa() {
     }
   }
 
+  // Match the canvas backing store to its displayed CSS size (with device pixel ratio)
+  // so signatures stay crisp on phones without changing the drawing/toDataURL contract.
+  const resizeCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const cssWidth = rect.width || canvas.width || 340;
+    const cssHeight = rect.height || canvas.height || 140;
+    const dpr = window.devicePixelRatio || 1;
+    const nextWidth = Math.max(1, Math.round(cssWidth * dpr));
+    const nextHeight = Math.max(1, Math.round(cssHeight * dpr));
+    if (canvas.width === nextWidth && canvas.height === nextHeight) return;
+
+    let snapshot: string | null = null;
+    try {
+      snapshot = canvas.toDataURL("image/png");
+    } catch {
+      snapshot = null;
+    }
+    canvas.width = nextWidth;
+    canvas.height = nextHeight;
+    if (snapshot) {
+      const image = new Image();
+      image.onload = () => {
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(image, 0, 0, canvas.width, canvas.height);
+      };
+      image.src = snapshot;
+    }
+  }, []);
+
+  useEffect(() => {
+    // The POD canvas mounts only when its tab becomes active, so re-measure on
+    // tab changes as well as window resizes.
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+    return () => window.removeEventListener("resize", resizeCanvas);
+  }, [resizeCanvas, activeTab]);
+
+  function canvasPoint(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = "touches" in e ? e.touches[0]?.clientX ?? 0 : e.clientX;
+    const clientY = "touches" in e ? e.touches[0]?.clientY ?? 0 : e.clientY;
+    const scaleX = rect.width ? canvas.width / rect.width : 1;
+    const scaleY = rect.height ? canvas.height / rect.height : 1;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+      scale: scaleX || 1,
+    };
+  }
+
   // Canvas drawing handlers
   function startDraw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current;
@@ -185,11 +249,10 @@ export function DriverPwa() {
     if (!ctx) return;
     setIsDrawing(true);
     setHasSignature(true);
-    const rect = canvas.getBoundingClientRect();
-    const x = "touches" in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = "touches" in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+    const point = canvasPoint(e);
+    if (!point) return;
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.moveTo(point.x, point.y);
   }
 
   function draw(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
@@ -198,13 +261,12 @@ export function DriverPwa() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = "touches" in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = "touches" in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-    ctx.lineWidth = 2.5;
+    const point = canvasPoint(e);
+    if (!point) return;
+    ctx.lineWidth = 2.5 * point.scale;
     ctx.lineCap = "round";
     ctx.strokeStyle = "#2D5B75"; // Marine steel ink
-    ctx.lineTo(x, y);
+    ctx.lineTo(point.x, point.y);
     ctx.stroke();
   }
 
@@ -242,7 +304,7 @@ export function DriverPwa() {
         driver_confirmed: inspDriverConfirmed,
       },
     });
-    alert("Inspection recorded and queued!");
+    showToast("Inspection recorded and queued!");
   }
 
   // Loading scan verification
@@ -285,14 +347,14 @@ export function DriverPwa() {
         actual_temp_c: val,
       },
     });
-    alert(`Temperature ${val}°C queued.`);
+    showToast(`Temperature ${val}°C queued.`);
   }
 
   // Submit POD
   function handleSubmitPod() {
     if (!activeDelivery) return;
     if (!recipientName.trim()) {
-      alert("Please enter recipient name.");
+      showToast("Please enter recipient name.");
       return;
     }
     const canvas = canvasRef.current;
@@ -314,7 +376,7 @@ export function DriverPwa() {
         delivery_notes: podNotes,
       },
     });
-    alert("Proof of delivery signed and queued for sync!");
+    showToast("Proof of delivery signed and queued for sync!");
   }
 
   // Submit Exception
@@ -332,7 +394,7 @@ export function DriverPwa() {
       },
     });
     setExcOpen(false);
-    alert("Exception logged and queued!");
+    showToast("Exception logged and queued!");
   }
 
   return (
@@ -495,7 +557,7 @@ export function DriverPwa() {
                     label: "Depart Hub / In Transit",
                     payload: { delivery_id: activeDelivery?.id },
                   });
-                  alert("Departure logged!");
+                  showToast("Departure logged!");
                 }}
               >
                 <Truck className="mr-1.5 h-4 w-4" /> Start Transit
@@ -709,6 +771,8 @@ export function DriverPwa() {
                   type="text"
                   value={acceptedCases}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAcceptedCases(e.target.value)}
+                  inputMode="decimal"
+                  pattern="[0-9]*"
                   className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-xs"
                 />
               </div>
@@ -718,6 +782,8 @@ export function DriverPwa() {
                   type="text"
                   value={rejectedCases}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRejectedCases(e.target.value)}
+                  inputMode="decimal"
+                  pattern="[0-9]*"
                   className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-xs"
                 />
               </div>
@@ -732,7 +798,7 @@ export function DriverPwa() {
                 <button
                   type="button"
                   onClick={clearCanvas}
-                  className="text-[10px] text-primary hover:underline"
+                  className="inline-flex min-h-11 items-center px-3 text-xs text-primary hover:underline sm:min-h-0 sm:px-0 sm:text-[10px]"
                 >
                   Clear Signature
                 </button>
@@ -770,27 +836,40 @@ export function DriverPwa() {
               />
             </div>
 
-            <Can permission="deliveries:update" mode="disable">
-              <button
-                className="w-full inline-flex items-center justify-center rounded-lg bg-marine-steel py-2.5 text-xs font-semibold text-white hover:bg-marine-steel"
-                onClick={handleSubmitPod}
-              >
-                <CheckCircle2 className="mr-1.5 h-4 w-4" /> Confirm & Submit POD
-              </button>
-            </Can>
+            <div className="sticky bottom-0 z-10 -mx-4 -mb-4 mt-2 border-t border-border bg-surface/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:static sm:mx-0 sm:mb-0 sm:border-t-0 sm:bg-transparent sm:p-0 sm:pt-0 sm:backdrop-blur-none">
+              <Can permission="deliveries:update" mode="disable">
+                <button
+                  className="min-h-11 w-full inline-flex items-center justify-center rounded-lg bg-marine-steel py-2.5 text-xs font-semibold text-white hover:bg-marine-steel sm:min-h-0"
+                  onClick={handleSubmitPod}
+                >
+                  <CheckCircle2 className="mr-1.5 h-4 w-4" /> Confirm & Submit POD
+                </button>
+              </Can>
+            </div>
           </div>
         </div>
       )}
 
       {/* Exception Modal */}
       {excOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-card p-5 shadow-xl space-y-3 max-h-[90vh] overflow-y-auto border border-border">
-            <div className="flex items-center justify-between border-b border-border pb-2">
-              <h3 className="text-sm font-bold">Report Delivery Exception</h3>
-              <button onClick={() => setExcOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="exception-modal-title"
+            className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl sm:max-h-[90vh] sm:max-w-sm sm:rounded-xl sm:p-5"
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 pb-2 pt-4 sm:px-0 sm:pt-0">
+              <h3 id="exception-modal-title" className="text-sm font-bold">Report Delivery Exception</h3>
+              <button
+                onClick={() => setExcOpen(false)}
+                aria-label="Close"
+                className="flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0"
+              >
+                ✕
+              </button>
             </div>
-            <div className="space-y-3 text-xs">
+            <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4 text-xs sm:px-0 sm:pb-0">
               <div>
                 <label className="font-semibold">Exception Type</label>
                 <select
@@ -823,6 +902,8 @@ export function DriverPwa() {
                     type="text"
                     value={excCases}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setExcCases(e.target.value)}
+                    inputMode="decimal"
+                    pattern="[0-9]*"
                     className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-xs"
                   />
                 </div>
@@ -839,11 +920,11 @@ export function DriverPwa() {
                   </select>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-border bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setExcOpen(false)}
-                  className="rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                  className="min-h-11 rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted sm:min-h-0"
                 >
                   Cancel
                 </button>
@@ -851,7 +932,7 @@ export function DriverPwa() {
                   <button
                     type="button"
                     onClick={handleSubmitException}
-                    className="rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                    className="min-h-11 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:min-h-0"
                   >
                     Queue Exception
                   </button>
@@ -859,6 +940,16 @@ export function DriverPwa() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 right-4 z-[60] rounded-lg border border-marine-ocean/60 bg-card px-4 py-3 text-xs font-medium text-foreground shadow-lg sm:bottom-5 sm:left-auto sm:right-5 sm:max-w-sm"
+        >
+          {toast}
         </div>
       )}
     </div>

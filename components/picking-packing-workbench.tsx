@@ -80,6 +80,7 @@ export function PickingPackingWorkbench({
   const [wavePriority, setWavePriority] = useState<string>("normal");
   const [waveZone, setWaveZone] = useState<string>("ALL");
   const [assignedPicker, setAssignedPicker] = useState<string>("Pietro Rossi");
+  const [waveToCancel, setWaveToCancel] = useState<PickWaveRecord | null>(null);
 
   // Barcode Scanning simulator state
   const [scanBin, setScanBin] = useState<string>("");
@@ -396,6 +397,21 @@ export function PickingPackingWorkbench({
     }
   };
 
+  async function confirmCancelWave() {
+    if (!waveToCancel) return;
+    const waveId = waveToCancel.id;
+    setWaveToCancel(null);
+    try {
+      await fetch(`/api/v1/picking/waves/${waveId}?reason=Cancelled+by+supervisor`, {
+        method: "DELETE",
+      });
+      notify("success", `Wave cancelled.`);
+      loadDashboardData();
+    } catch (err: any) {
+      notify("error", err.message || "Failed to cancel wave");
+    }
+  }
+
   // Quick stats
   const totalWaves = waves.length;
   const inProgressWaves = waves.filter((w) => w.status === "picking" || w.status === "assigned" || w.status === "partially_picked").length;
@@ -492,7 +508,7 @@ export function PickingPackingWorkbench({
 
       {/* Main Navigation Tabs */}
       <div className="border-b">
-        <nav className="flex space-x-6 text-sm font-medium">
+        <nav className="flex space-x-6 overflow-x-auto whitespace-nowrap text-sm font-medium [-webkit-overflow-scrolling:touch]">
           {[
             { id: "overview", label: "Overview & Pipeline", icon: Layers },
             { id: "waves", label: "Wave Manager", icon: Boxes },
@@ -507,7 +523,7 @@ export function PickingPackingWorkbench({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`inline-flex items-center gap-2 border-b-2 pb-3 transition-colors ${
+                className={`inline-flex shrink-0 items-center gap-2 border-b-2 pb-3 transition-colors ${
                   active
                     ? "border-primary text-primary font-semibold"
                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -676,12 +692,7 @@ export function PickingPackingWorkbench({
                       {w.status !== "cancelled" && w.status !== "staged" && (
                         <Can permission="warehouse:update" mode="hide">
                           <button
-                            onClick={async () => {
-                              if (confirm(`Cancel wave ${w.wave_number}?`)) {
-                                await fetch(`/api/v1/picking/waves/${w.id}?reason=Cancelled+by+supervisor`, { method: "DELETE" });
-                                loadDashboardData();
-                              }
-                            }}
+                            onClick={() => setWaveToCancel(w)}
                             className="rounded bg-red-50 text-red-700 px-2 py-1 text-xs hover:bg-red-100"
                           >
                             Cancel
@@ -864,7 +875,7 @@ export function PickingPackingWorkbench({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between pt-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
                     <button
                       onClick={() => {
                         // Quick Fill Accurate Values
@@ -872,7 +883,7 @@ export function PickingPackingWorkbench({
                         setScanSku(activeTask.sku);
                         setScanLot(activeTask.allocated_lot);
                       }}
-                      className="text-xs text-muted-foreground underline hover:text-foreground"
+                      className="min-h-11 rounded px-3 text-xs text-muted-foreground underline hover:text-foreground sm:min-h-0 sm:px-0"
                     >
                       Fill Correct Barcode Values
                     </button>
@@ -902,7 +913,7 @@ export function PickingPackingWorkbench({
                     </div>
                     <button
                       onClick={() => setIsCatchWeightOpen(true)}
-                      className="rounded bg-blue-600 text-white px-2.5 py-1 text-xs font-semibold hover:bg-blue-700"
+                      className="min-h-11 rounded bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 sm:min-h-0 sm:px-2.5 sm:py-1"
                     >
                       Scale Input
                     </button>
@@ -1338,19 +1349,28 @@ export function PickingPackingWorkbench({
 
       {/* CATCH WEIGHT SCALE MODAL */}
       {isCatchWeightOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl space-y-4 border">
-            <div className="flex items-center justify-between border-b pb-3">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="catch-weight-title"
+            className="flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-2xl border bg-card shadow-xl sm:max-w-md sm:rounded-xl sm:p-6"
+          >
+            <div className="flex items-center justify-between border-b px-4 pb-3 pt-4 sm:px-0 sm:pt-0">
               <div className="flex items-center gap-2">
                 <Scale className="h-5 w-5 text-blue-600" />
-                <h3 className="text-lg font-bold">Catch-Weight Confirmation</h3>
+                <h3 id="catch-weight-title" className="text-lg font-bold">Catch-Weight Confirmation</h3>
               </div>
-              <button onClick={() => setIsCatchWeightOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => setIsCatchWeightOpen(false)}
+                aria-label="Close"
+                className="flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0"
+              >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4 text-xs sm:px-0 sm:pb-0">
               <div className="rounded bg-muted p-3">
                 <div className="text-muted-foreground">Product</div>
                 <div className="font-semibold text-sm">{activeTask?.product_name}</div>
@@ -1405,11 +1425,11 @@ export function PickingPackingWorkbench({
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t">
+              <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setIsCatchWeightOpen(false)}
-                  className="rounded border px-4 py-2 text-xs"
+                  className="min-h-11 rounded border px-4 py-2 text-xs sm:min-h-0"
                 >
                   Cancel
                 </button>
@@ -1417,12 +1437,44 @@ export function PickingPackingWorkbench({
                   <button
                     type="button"
                     onClick={handleConfirmCatchWeight}
-                    className="rounded bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                    className="min-h-11 rounded bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:min-h-0"
                   >
                     Confirm Weight
                   </button>
                 </Can>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {waveToCancel && (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Cancel pick wave"
+            className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-card p-4 shadow-xl sm:rounded-xl sm:p-5"
+          >
+            <h3 className="text-sm font-bold">Cancel pick wave?</h3>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {waveToCancel.wave_number} will be cancelled and removed from the active picking queue.
+            </p>
+            <div className="sticky bottom-0 mt-4 flex flex-col gap-2 border-t border-border bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:flex-row sm:justify-end sm:pb-0">
+              <button
+                type="button"
+                onClick={() => setWaveToCancel(null)}
+                className="min-h-11 w-full rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted sm:min-h-0 sm:w-auto"
+              >
+                Keep wave
+              </button>
+              <button
+                type="button"
+                onClick={confirmCancelWave}
+                className="min-h-11 w-full rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 sm:min-h-0 sm:w-auto"
+              >
+                Cancel wave
+              </button>
             </div>
           </div>
         </div>

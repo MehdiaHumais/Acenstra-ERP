@@ -709,8 +709,8 @@ export function ManagementAiWorkbench() {
               </div>
 
               {/* BI Table */}
-              <div className="rounded-lg border bg-card overflow-hidden shadow-sm">
-                <table className="w-full text-xs">
+              <div className="table-shell rounded-lg border bg-card shadow-sm">
+                <table className="data-table min-w-[960px]">
                   <thead className="bg-muted border-b text-muted-foreground">
                     <tr>
                       <th className="py-2.5 px-4 text-left font-medium">Dimension ({biDimension})</th>
@@ -758,8 +758,8 @@ export function ManagementAiWorkbench() {
                 <Badge tone="neutral">{forecasts.length} Products Monitored</Badge>
               </div>
 
-              <div className="rounded-lg border bg-card overflow-hidden shadow-sm">
-                <table className="w-full text-xs">
+              <div className="table-shell rounded-lg border bg-card shadow-sm">
+                <table className="data-table min-w-[1100px]">
                   <thead className="bg-muted border-b text-muted-foreground">
                     <tr>
                       <th className="py-2.5 px-4 text-left font-medium">Product / SKU</th>
@@ -895,8 +895,8 @@ export function ManagementAiWorkbench() {
                 <Badge tone="brand">Advisory Only — PO Creation Requires Maker-Checker</Badge>
               </div>
 
-              <div className="rounded-lg border bg-card overflow-hidden shadow-sm">
-                <table className="w-full text-xs">
+              <div className="table-shell rounded-lg border bg-card shadow-sm">
+                <table className="data-table min-w-[1280px]">
                   <thead className="bg-muted border-b text-muted-foreground">
                     <tr>
                       <th className="py-2.5 px-4 text-left font-medium">Product / SKU</th>
@@ -1184,10 +1184,15 @@ export function ManagementAiWorkbench() {
 
       {/* MODAL 1: ANOMALY REVIEW */}
       {reviewModalOpen && selectedAnomaly && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-lg border bg-background p-6 shadow-lg space-y-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="anomaly-review-title"
+            className="max-h-[92dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-t-2xl border bg-background p-4 shadow-lg sm:rounded-lg sm:p-6"
+          >
             <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-semibold text-sm">Review Anomaly: {selectedAnomaly.anomaly_number}</h3>
+              <h3 id="anomaly-review-title" className="font-semibold text-sm">Review Anomaly: {selectedAnomaly.anomaly_number}</h3>
               <button onClick={() => setReviewModalOpen(false)} className="text-muted-foreground hover:text-foreground">
                 &times;
               </button>
@@ -1251,10 +1256,15 @@ export function ManagementAiWorkbench() {
 
       {/* MODAL 2: MAKER-CHECKER AI ACTION APPROVE / REJECT */}
       {actionModalOpen && selectedAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-lg border bg-background p-6 shadow-lg space-y-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ai-action-title"
+            className="max-h-[92dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-t-2xl border bg-background p-4 shadow-lg sm:rounded-lg sm:p-6"
+          >
             <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-semibold text-sm">
+              <h3 id="ai-action-title" className="font-semibold text-sm">
                 {actionModalMode === "approve" ? "Sign-off & Execute Action" : "Reject Action Proposal"}
               </h3>
               <button onClick={() => setActionModalOpen(false)} className="text-muted-foreground hover:text-foreground">
@@ -1269,7 +1279,7 @@ export function ManagementAiWorkbench() {
               </div>
               <p className="font-semibold text-foreground">{selectedAction.summary}</p>
               <p className="text-muted-foreground">{selectedAction.rationale}</p>
-              <div className="rounded bg-muted p-2 text-[11px] font-mono">
+              <div className="overflow-x-auto whitespace-pre-wrap break-all rounded bg-muted p-2 text-[11px] font-mono">
                 Parameters: {JSON.stringify(selectedAction.parameters, null, 2)}
               </div>
             </div>

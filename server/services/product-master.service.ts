@@ -41,6 +41,16 @@ function stringOr(value: unknown, fallback = ""): string {
   return text || fallback;
 }
 
+/** Accept only small embedded image data URLs or ordinary http(s) URLs. */
+function sanitizeImageUrl(value: unknown, fallback = ""): string {
+  const raw = stringOr(value, fallback);
+  if (!raw) return "";
+  if (raw.length > 1_500_000) return "";
+  if (/^data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/i.test(raw)) return raw;
+  if (/^https?:\/\/[^\s]+$/i.test(raw)) return raw.slice(0, 2000);
+  return "";
+}
+
 function numberOr(value: unknown, fallback: number): number {
   if (value === null || value === undefined || value === "") return fallback;
   const parsed = Number(value);
@@ -180,6 +190,8 @@ function mapProduct(row: Record<string, unknown>, index: number): Product {
     currency: stringOr(row.currency, "EUR"),
     supplier_id: stringOr(row.supplier_id) || undefined,
     supplier_sku: stringOr(row.supplier_sku) || undefined,
+    image_url: sanitizeImageUrl(row.image_url) || undefined,
+    image_source: stringOr(row.image_source) || undefined,
     certificate_count: Math.max(0, Math.round(numberOr(row.certificate_count, 0))),
     expiring_certificate_count: Math.max(
       0,
@@ -348,6 +360,8 @@ export interface ProductWriteInput {
   supplier_sku?: string;
   lead_time_days?: number;
   moq_cases?: number;
+  image_url?: string;
+  image_source?: string;
   certificates?: ProductCertificateInput[];
 }
 
@@ -388,6 +402,8 @@ interface NormalisedProduct {
   supplierSku: string;
   leadTimeDays: number;
   moqCases: number;
+  imageUrl: string;
+  imageSource: string;
 }
 
 function normaliseProduct(
@@ -510,6 +526,8 @@ function normaliseProduct(
       Math.round(numberOr(input.lead_time_days, 2)),
     ),
     moqCases: Math.max(1, Math.round(numberOr(input.moq_cases, 1))),
+    imageUrl: sanitizeImageUrl(input.image_url, existing?.image_url ?? ""),
+    imageSource: stringOr(input.image_source, existing?.image_source ?? "").slice(0, 120),
   };
 }
 
@@ -743,10 +761,11 @@ export function createProduct(
         units_per_case, unit_weight_kg, case_weight_kg, catch_weight,
         catch_weight_min_kg, catch_weight_max_kg, tare_weight_kg, allergens_json,
         may_contain_json, handling_json, diet_flags_json, temp_min_c, temp_max_c,
-        min_shelf_life_days, cost_price_cents, currency, supplier_id, supplier_sku
+        min_shelf_life_days, cost_price_cents, currency, supplier_id, supplier_sku,
+        image_url, image_source
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?, ?, 0, 25, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `,
     ).run(
@@ -785,6 +804,8 @@ export function createProduct(
       product.currency,
       supplierId,
       product.supplierSku || null,
+      product.imageUrl || null,
+      product.imageSource || null,
     );
 
     upsertSupplierLink(db, product.sku, product, supplierId);
@@ -901,7 +922,8 @@ export function updateProduct(
         catch_weight_max_kg = ?, tare_weight_kg = ?, allergens_json = ?,
         may_contain_json = ?, handling_json = ?, diet_flags_json = ?,
         temp_min_c = ?, temp_max_c = ?, min_shelf_life_days = ?,
-        cost_price_cents = ?, currency = ?, supplier_id = ?, supplier_sku = ?
+        cost_price_cents = ?, currency = ?, supplier_id = ?, supplier_sku = ?,
+        image_url = ?, image_source = ?
       WHERE sku = ?
     `,
     ).run(
@@ -938,6 +960,8 @@ export function updateProduct(
       product.currency,
       supplierId,
       product.supplierSku || null,
+      product.imageUrl || null,
+      product.imageSource || null,
       existing.sku,
     );
 

@@ -40,7 +40,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none",
+        "inline-flex max-w-full items-center gap-1.5 break-words rounded-full border px-2.5 py-1 text-[11px] font-semibold leading-none whitespace-normal sm:whitespace-nowrap",
         toneClasses[tone],
         className,
       )}
@@ -73,7 +73,7 @@ export function SectionHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2 border-b border-border px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 border-b border-border px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
       <div>
         {eyebrow && (
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
@@ -85,7 +85,11 @@ export function SectionHeader({
           <p className="mt-0.5 max-w-3xl text-xs text-muted-foreground">{description}</p>
         )}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {action && (
+        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
+          {action}
+        </div>
+      )}
     </div>
   );
 }
@@ -118,7 +122,7 @@ export function KpiCard({
 
   return (
     <div className="surface flex h-full min-h-[80px] flex-col p-3">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           {label}
         </p>
@@ -183,9 +187,9 @@ export function StatRow({
           ? "text-emerald-700"
           : "text-foreground";
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-border/60 py-2.5 last:border-0">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 py-2.5 last:border-0 sm:gap-4">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className={cn("text-sm font-semibold", colour)}>{value}</span>
+      <span className={cn("break-words text-right text-sm font-semibold", colour)}>{value}</span>
     </div>
   );
 }

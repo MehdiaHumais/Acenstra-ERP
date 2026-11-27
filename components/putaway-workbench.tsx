@@ -1201,21 +1201,21 @@ export function PutawayWorkbench() {
                 <div className="rounded-lg border border-marine-ocean/60 p-3 dark:border-slate-800">
                   <div className="flex justify-between font-medium">
                     <span>1. Put-away Task Barcode</span>
-                    <span className="font-mono text-slate-400">Expected: {taskDetail.task_number}</span>
+                    <span className="min-w-0 break-all font-mono text-slate-400">Expected: {taskDetail.task_number}</span>
                   </div>
-                  <div className="mt-1.5 flex gap-2">
+                  <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
                     <input
                       type="text"
                       value={scanTaskInput}
                       onChange={(e) => setScanTaskInput(e.target.value)}
                       placeholder="Scan TASK:PUT-2026-..."
-                      className="w-full rounded-lg border border-marine-ocean/70 bg-white px-2.5 py-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-900"
+                      className="min-h-11 w-full rounded-lg border border-marine-ocean/70 bg-white px-2.5 py-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-900 sm:min-h-0"
                     />
                     <Can permission="putaway.execute" mode="disable">
                       <button
                         type="button"
                         onClick={() => void handleVerifyScan("task", scanTaskInput)}
-                        className="rounded-lg bg-slate-800 px-3 py-1.5 font-semibold text-white hover:bg-slate-700"
+                        className="min-h-11 w-full justify-center rounded-lg bg-slate-800 px-3 py-1.5 font-semibold text-white hover:bg-slate-700 sm:min-h-0 sm:w-auto"
                       >
                         Verify
                       </button>
@@ -1236,21 +1236,21 @@ export function PutawayWorkbench() {
                 <div className="rounded-lg border border-marine-ocean/60 p-3 dark:border-slate-800">
                   <div className="flex justify-between font-medium">
                     <span>2. Product / SKU Barcode</span>
-                    <span className="font-mono text-slate-400">Expected: {taskDetail.sku}</span>
+                    <span className="min-w-0 break-all font-mono text-slate-400">Expected: {taskDetail.sku}</span>
                   </div>
-                  <div className="mt-1.5 flex gap-2">
+                  <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
                     <input
                       type="text"
                       value={scanSkuInput}
                       onChange={(e) => setScanSkuInput(e.target.value)}
                       placeholder="Scan SKU..."
-                      className="w-full rounded-lg border border-marine-ocean/70 bg-white px-2.5 py-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-900"
+                      className="min-h-11 w-full rounded-lg border border-marine-ocean/70 bg-white px-2.5 py-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-900 sm:min-h-0"
                     />
                     <Can permission="putaway.execute" mode="disable">
                       <button
                         type="button"
                         onClick={() => void handleVerifyScan("sku", scanSkuInput)}
-                        className="rounded-lg bg-slate-800 px-3 py-1.5 font-semibold text-white hover:bg-slate-700"
+                        className="min-h-11 w-full justify-center rounded-lg bg-slate-800 px-3 py-1.5 font-semibold text-white hover:bg-slate-700 sm:min-h-0 sm:w-auto"
                       >
                         Verify
                       </button>
@@ -1271,21 +1271,21 @@ export function PutawayWorkbench() {
                 <div className="rounded-lg border border-marine-ocean/60 p-3 dark:border-slate-800">
                   <div className="flex justify-between font-medium">
                     <span>3. Internal Lot / Supplier Batch</span>
-                    <span className="font-mono text-slate-400">Expected: {taskDetail.internal_lot}</span>
+                    <span className="min-w-0 break-all font-mono text-slate-400">Expected: {taskDetail.internal_lot}</span>
                   </div>
-                  <div className="mt-1.5 flex gap-2">
+                  <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
                     <input
                       type="text"
                       value={scanLotInput}
                       onChange={(e) => setScanLotInput(e.target.value)}
                       placeholder="Scan LOT-2026-..."
-                      className="w-full rounded-lg border border-marine-ocean/70 bg-white px-2.5 py-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-900"
+                      className="min-h-11 w-full rounded-lg border border-marine-ocean/70 bg-white px-2.5 py-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-900 sm:min-h-0"
                     />
                     <Can permission="putaway.execute" mode="disable">
                       <button
                         type="button"
                         onClick={() => void handleVerifyScan("lot", scanLotInput)}
-                        className="rounded-lg bg-slate-800 px-3 py-1.5 font-semibold text-white hover:bg-slate-700"
+                        className="min-h-11 w-full justify-center rounded-lg bg-slate-800 px-3 py-1.5 font-semibold text-white hover:bg-slate-700 sm:min-h-0 sm:w-auto"
                       >
                         Verify
                       </button>
@@ -1306,23 +1306,23 @@ export function PutawayWorkbench() {
                 <div className="rounded-lg border border-marine-ocean/60 p-3 dark:border-slate-800">
                   <div className="flex justify-between font-medium">
                     <span>4. Destination Bin Barcode</span>
-                    <span className="font-mono text-slate-400">
+                    <span className="min-w-0 break-all font-mono text-slate-400">
                       Target: BIN:{taskDetail.assigned_bin_code || taskDetail.recommended_bin_code}
                     </span>
                   </div>
-                  <div className="mt-1.5 flex gap-2">
+                  <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
                     <input
                       type="text"
                       value={scanBinInput}
                       onChange={(e) => setScanBinInput(e.target.value)}
                       placeholder="Scan BIN:CHILL-A1-01..."
-                      className="w-full rounded-lg border border-marine-ocean/70 bg-white px-2.5 py-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-900"
+                      className="min-h-11 w-full rounded-lg border border-marine-ocean/70 bg-white px-2.5 py-1.5 font-mono text-xs dark:border-slate-700 dark:bg-slate-900 sm:min-h-0"
                     />
                     <Can permission="putaway.execute" mode="disable">
                       <button
                         type="button"
                         onClick={() => void handleVerifyScan("bin", scanBinInput)}
-                        className="rounded-lg bg-slate-800 px-3 py-1.5 font-semibold text-white hover:bg-slate-700"
+                        className="min-h-11 w-full justify-center rounded-lg bg-slate-800 px-3 py-1.5 font-semibold text-white hover:bg-slate-700 sm:min-h-0 sm:w-auto"
                       >
                         Verify
                       </button>
@@ -1381,10 +1381,10 @@ export function PutawayWorkbench() {
               <div className="py-8 text-center text-xs text-marine-mid/55">Select a task to confirm placement.</div>
             ) : (
               <form onSubmit={handleConfirmPlacement} className="mt-4 space-y-4 text-xs">
-                <div className="grid grid-cols-3 gap-3 rounded-xl bg-marine-ocean/15 p-3 dark:bg-slate-900">
-                  <div>
+                <div className="grid grid-cols-1 gap-3 rounded-xl bg-marine-ocean/15 p-3 sm:grid-cols-3 dark:bg-slate-900">
+                  <div className="min-w-0">
                     <span className="text-marine-mid/55">Task / Lot:</span>
-                    <div className="font-mono font-bold text-marine-navy dark:text-white">
+                    <div className="break-all font-mono font-bold text-marine-navy dark:text-white" title={`${taskDetail.task_number} · ${taskDetail.internal_lot}`}>
                       {taskDetail.task_number} · {taskDetail.internal_lot}
                     </div>
                   </div>
@@ -1394,9 +1394,9 @@ export function PutawayWorkbench() {
                       {taskDetail.remaining_qty} {taskDetail.uom}
                     </div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-marine-mid/55">Recommended Bin:</span>
-                    <div className="font-mono font-bold text-marine-mid dark:text-marine-mid">
+                    <div className="break-all font-mono font-bold text-marine-mid dark:text-marine-mid" title={taskDetail.assigned_bin_code || taskDetail.recommended_bin_code || undefined}>
                       {taskDetail.assigned_bin_code || taskDetail.recommended_bin_code}
                     </div>
                   </div>
@@ -1496,12 +1496,12 @@ export function PutawayWorkbench() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 border-t border-marine-ocean/60 pt-3 dark:border-slate-800">
+                <div className="sticky bottom-0 z-10 -mx-5 flex flex-wrap items-center justify-end gap-3 border-t border-marine-ocean/60 bg-card px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 dark:border-slate-800 sm:static sm:mx-0 sm:px-0 sm:pb-3">
                   <Can permission="putaway.execute" mode="disable">
                     <button
                       type="submit"
                       disabled={taskDetail.status === "Completed"}
-                      className="inline-flex items-center gap-2 rounded-lg bg-marine-steel px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-marine-steel disabled:opacity-50"
+                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-marine-steel px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-marine-steel disabled:opacity-50 sm:min-h-0 sm:w-auto"
                     >
                       <CheckCircle2 className="h-4 w-4" />
                       Confirm Stock Placement & Update Bin Inventory
@@ -1563,11 +1563,11 @@ export function PutawayWorkbench() {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div>
-                      <span className="font-mono text-sm font-bold text-marine-navy dark:text-white">
+                    <div className="min-w-0">
+                      <span className="break-all font-mono text-sm font-bold text-marine-navy dark:text-white">
                         {b.code}
                       </span>
-                      <span className="ml-2 font-mono text-[11px] text-slate-400">{b.barcode}</span>
+                      <span className="ml-2 break-all font-mono text-[11px] text-slate-400">{b.barcode}</span>
                     </div>
                     <Badge
                       tone={
@@ -1628,7 +1628,7 @@ export function PutawayWorkbench() {
                             key={p.id}
                             className="flex items-center justify-between rounded bg-marine-ocean/25 px-2 py-1 font-mono text-[10px] dark:bg-slate-900"
                           >
-                            <span>
+                            <span className="min-w-0 break-all pr-2">
                               {p.sku} · {p.internal_lot}
                             </span>
                             <span>
@@ -1647,7 +1647,7 @@ export function PutawayWorkbench() {
                         <button
                           type="button"
                           onClick={() => void handleToggleBinStatus(b, "active")}
-                          className="rounded bg-marine-steel px-2 py-1 text-[10px] font-semibold text-white hover:bg-marine-steel"
+                          className="min-h-11 min-w-11 rounded bg-marine-steel px-2 py-1 text-[10px] font-semibold text-white hover:bg-marine-steel sm:min-h-0 sm:min-w-0"
                         >
                           Activate Bin
                         </button>
@@ -1657,7 +1657,7 @@ export function PutawayWorkbench() {
                         <button
                           type="button"
                           onClick={() => void handleToggleBinStatus(b, "blocked")}
-                          className="rounded border border-rose-500/40 px-2 py-1 text-[10px] font-semibold text-rose-500 hover:bg-rose-500/10"
+                          className="min-h-11 min-w-11 rounded border border-rose-500/40 px-2 py-1 text-[10px] font-semibold text-rose-500 hover:bg-rose-500/10 sm:min-h-0 sm:min-w-0"
                         >
                           Block Bin
                         </button>

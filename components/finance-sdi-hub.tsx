@@ -86,32 +86,32 @@ export function FinanceSdiHub({
       </div>
 
       {/* Unified Switcher */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-1.5 shadow-sm">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto whitespace-nowrap rounded-xl border border-border bg-card p-1.5 shadow-sm [-webkit-overflow-scrolling:touch] sm:flex-wrap">
         <button
           type="button"
           onClick={() => setActiveTab("workbench")}
           className={cn(
-            "flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all",
+            "flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all",
             activeTab === "workbench"
               ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
         >
           <Receipt className="h-3.5 w-3.5" />
-          Invoicing, FatturaPA XML, Payments, Bank Recon & Margins
+          Invoicing<span className="hidden sm:inline">, FatturaPA XML, Payments, Bank Recon & Margins</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("register")}
           className={cn(
-            "flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all",
+            "flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all",
             activeTab === "register"
               ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
         >
           <ReceiptText className="h-3.5 w-3.5" />
-          Receivables Register & Ageing Summary
+          Receivables Register<span className="hidden sm:inline"> & Ageing Summary</span>
           <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-[10px]">
             {finance.invoices.length}
           </span>

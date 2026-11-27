@@ -77,7 +77,7 @@ export function WarehouseOperationsHub({
       />
 
       {/* Unified Module Switcher */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-1.5 shadow-sm">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto whitespace-nowrap rounded-xl border border-border bg-card p-1.5 shadow-sm [-webkit-overflow-scrolling:touch] sm:flex-wrap">
         <button
           type="button"
           onClick={() => setActiveTab("picking")}
@@ -89,7 +89,7 @@ export function WarehouseOperationsHub({
           )}
         >
           <Barcode className="h-3.5 w-3.5" />
-          Picking, Packing & Dispatch Staging
+          Picking<span className="hidden sm:inline">, Packing & Dispatch Staging</span>
         </button>
         <button
           type="button"
@@ -102,7 +102,7 @@ export function WarehouseOperationsHub({
           )}
         >
           <Warehouse className="h-3.5 w-3.5" />
-          Put-away & Bin Placement
+          Put-away<span className="hidden sm:inline"> & Bin Placement</span>
         </button>
         <button
           type="button"
@@ -115,7 +115,7 @@ export function WarehouseOperationsHub({
           )}
         >
           <ClipboardCheck className="h-3.5 w-3.5" />
-          Floor Queue, Zones & Scanner
+          Floor Queue<span className="hidden sm:inline">, Zones & Scanner</span>
           <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-[10px]">
             {open}
           </span>

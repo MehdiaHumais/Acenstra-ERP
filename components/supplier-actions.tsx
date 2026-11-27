@@ -173,7 +173,11 @@ export function SupplierActions({
       </div>
 
       {feedback && (
-        <div className="fixed bottom-5 right-5 z-[80] max-w-sm rounded-xl border border-marine-ocean/60 bg-white px-4 py-3 text-xs font-medium text-marine-mid/90 shadow-xl">
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-4 right-4 z-[80] max-w-sm rounded-xl border border-marine-ocean/60 bg-white px-4 py-3 text-xs font-medium text-marine-mid/90 shadow-xl sm:bottom-5 sm:left-auto sm:right-5"
+        >
           <span className="flex items-start gap-2">
             <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {feedback}
           </span>
@@ -181,20 +185,26 @@ export function SupplierActions({
       )}
 
       {supplierOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={submitSupplier} className="w-full max-w-md rounded-xl border border-border bg-card text-left shadow-xl">
-            <div className="flex items-start justify-between border-b border-border px-5 py-4">
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+          <form
+            onSubmit={submitSupplier}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-supplier-title"
+            className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card text-left shadow-xl sm:max-w-md sm:rounded-xl"
+          >
+            <div className="flex items-start justify-between border-b border-border px-4 pb-4 pt-4 sm:px-5 sm:pt-5">
               <div>
-                <h2 className="text-sm font-semibold">Add food supplier</h2>
+                <h2 id="add-supplier-title" className="text-sm font-semibold">Add food supplier</h2>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
                   Register a producer or distributor for procurement and traceability.
                 </p>
               </div>
-              <button type="button" aria-label="Close" className="btn btn-ghost btn-sm" onClick={() => setSupplierOpen(false)}>
+              <button type="button" aria-label="Close" className="btn btn-ghost btn-sm min-h-11 min-w-11 justify-center sm:min-h-0 sm:min-w-0" onClick={() => setSupplierOpen(false)}>
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="space-y-3 px-5 py-4">
+            <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
               <label className="block">
                 <span className="field-label">Supplier company name *</span>
                 <input
@@ -258,12 +268,12 @@ export function SupplierActions({
                 </label>
               </div>
             </div>
-            <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
-              <button type="button" className="btn btn-secondary" onClick={() => setSupplierOpen(false)}>
+            <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-border bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-5 sm:pb-3">
+              <button type="button" className="btn btn-secondary min-h-11 sm:min-h-0" onClick={() => setSupplierOpen(false)}>
                 Cancel
               </button>
               <Can permission="suppliers:write" mode="disable">
-                <button type="submit" className="btn btn-primary">
+                <button type="submit" className="btn btn-primary min-h-11 sm:min-h-0">
                   Save supplier
                 </button>
               </Can>
@@ -273,9 +283,15 @@ export function SupplierActions({
       )}
 
       {rfqOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={submitRfq} className="w-full max-w-md rounded-xl border border-border bg-card text-left shadow-xl">
-            <div className="flex items-start justify-between border-b border-border px-5 py-4">
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+          <form
+            onSubmit={submitRfq}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rfq-title"
+            className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card text-left shadow-xl sm:max-w-md sm:rounded-xl"
+          >
+            <div className="flex items-start justify-between border-b border-border px-4 pb-4 pt-4 sm:px-5 sm:pt-5">
               <div>
                 <h2 className="text-sm font-semibold">Request for quotation</h2>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">

@@ -37,7 +37,7 @@ export function WarehouseInventoryHub({
       />
 
       {/* Unified Switcher */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-1.5 shadow-sm">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto whitespace-nowrap rounded-xl border border-border bg-card p-1.5 shadow-sm [-webkit-overflow-scrolling:touch] sm:flex-wrap">
         <button
           type="button"
           onClick={() => setActiveTab("inventory")}
@@ -49,7 +49,7 @@ export function WarehouseInventoryHub({
           )}
         >
           <Snowflake className="h-3.5 w-3.5" />
-          FEFO Inventory, Batches, Expiry, Reservations & Cycle Counts
+          FEFO Inventory<span className="hidden sm:inline">, Batches, Expiry, Reservations & Cycle Counts</span>
         </button>
         <button
           type="button"
@@ -62,7 +62,7 @@ export function WarehouseInventoryHub({
           )}
         >
           <Warehouse className="h-3.5 w-3.5" />
-          Put-away & Warehouse Bin Placement
+          Put-away<span className="hidden sm:inline"> & Warehouse Bin Placement</span>
         </button>
       </div>
 

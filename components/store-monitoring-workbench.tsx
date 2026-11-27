@@ -460,15 +460,15 @@ export function StoreMonitoringWorkbench() {
   return (
     <div className="space-y-5">
       {/* Scope & Governance Banner */}
-      <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 text-xs text-blue-950 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-start gap-2.5">
+      <div className="min-w-0 rounded-xl border border-blue-200 bg-blue-50/70 p-3 text-xs text-blue-950 shadow-sm sm:p-4">
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-1 items-start gap-2.5">
             <Store className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" />
-            <div>
-              <p className="font-semibold">
+            <div className="min-w-0">
+              <p className="font-semibold leading-5">
                 Module 13 · Fast-Food Store / Vendor Monitoring & Consolidated Purchasing Analytics
               </p>
-              <p className="mt-0.5 text-[11px] text-blue-800">
+              <p className="mt-0.5 break-words text-[11px] leading-5 text-blue-800">
                 Provides restricted store/vendor portals with isolated purchasing, invoice, and transparent consumption
                 analytics, plus distributor-wide consolidated multi-store performance.{" "}
                 <span className="font-semibold">
@@ -480,7 +480,7 @@ export function StoreMonitoringWorkbench() {
           </div>
 
           {/* Role & Perspective Switcher */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full min-w-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             <select
               value={actorKey}
               onChange={(e) => {
@@ -495,7 +495,7 @@ export function StoreMonitoringWorkbench() {
                   setSelectedStoreId("STR-MIL-02");
                 }
               }}
-              className="rounded-lg border border-blue-300 bg-white px-2.5 py-1.5 text-xs font-medium text-marine-navy"
+              className="input w-full min-w-0 max-w-full bg-white text-xs font-medium text-marine-navy sm:w-auto sm:max-w-[22rem]"
               aria-label="Active RBAC Identity"
             >
               <option value="distributor_admin">Actor: Marco Bellini (Distributor Admin)</option>
@@ -505,7 +505,7 @@ export function StoreMonitoringWorkbench() {
               <option value="store_owner_mil02">Actor: Chiara Lombardi (Store Owner · STR-MIL-02)</option>
             </select>
 
-            <div className="flex rounded-lg border border-blue-300 bg-white p-0.5">
+            <div className="flex w-full min-w-0 rounded-lg border border-blue-300 bg-white p-0.5 sm:w-auto">
               <button
                 type="button"
                 onClick={() => {
@@ -513,7 +513,7 @@ export function StoreMonitoringWorkbench() {
                   setFeedback(null);
                 }}
                 className={cn(
-                  "rounded-md px-3 py-1 text-xs font-semibold transition-all",
+                  "min-w-0 flex-1 rounded-md px-2 py-2 text-[11px] font-semibold leading-tight transition-all sm:flex-none sm:px-3 sm:py-1 sm:text-xs",
                   viewMode === "distributor_consolidated"
                     ? "bg-primary text-primary-foreground"
                     : "text-marine-mid/80 hover:bg-black/[0.04]"
@@ -528,7 +528,7 @@ export function StoreMonitoringWorkbench() {
                   setFeedback(null);
                 }}
                 className={cn(
-                  "rounded-md px-3 py-1 text-xs font-semibold transition-all",
+                  "min-w-0 flex-1 rounded-md px-2 py-2 text-[11px] font-semibold leading-tight transition-all sm:flex-none sm:px-3 sm:py-1 sm:text-xs",
                   viewMode === "store_portal"
                     ? "bg-primary text-primary-foreground"
                     : "text-marine-mid/80 hover:bg-black/[0.04]"
@@ -688,8 +688,8 @@ export function StoreMonitoringWorkbench() {
                     title="Consolidated Purchasing & Consumption by Store"
                     description="Click 'Inspect Store Portal' on any row to drill into its isolated store dashboard, order history, consumption calculator, and POS mappings."
                   />
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                  <div className="scrollbar-thin overflow-x-auto">
+                    <table className="min-w-[640px] w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-border bg-muted/40 text-[11px] font-semibold uppercase text-muted-foreground">
                           <th className="px-4 py-3">Store & Franchise Group</th>
@@ -860,8 +860,8 @@ export function StoreMonitoringWorkbench() {
                   title="Product-Level Purchasing Comparison"
                   description="Compares ordered case volumes and spend per SKU between the two selected stores."
                 />
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="scrollbar-thin overflow-x-auto">
+                  <table className="min-w-[640px] w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-border bg-muted/40 text-[11px] font-semibold uppercase text-muted-foreground">
                         <th className="px-4 py-3">SKU & Product</th>
@@ -908,8 +908,8 @@ export function StoreMonitoringWorkbench() {
                   title="Associated Fast-Food Stores & Franchise Accounts"
                   description="Manage store status (Active / Watch / Suspended), pricing contracts, credit limits, and assigned store users."
                 />
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="scrollbar-thin overflow-x-auto">
+                  <table className="min-w-[640px] w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-border bg-muted/40 text-[11px] font-semibold uppercase text-muted-foreground">
                         <th className="px-4 py-3">Store Ref & Code</th>
@@ -1287,8 +1287,8 @@ export function StoreMonitoringWorkbench() {
                     title="Purchases by Product, Frequency & Price Trends"
                     description="Shows ordered vs allocated cases, order frequency, and contract unit price trends."
                   />
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                  <div className="scrollbar-thin overflow-x-auto">
+                    <table className="min-w-[640px] w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-border bg-muted/40 text-[11px] font-semibold uppercase text-muted-foreground">
                           <th className="px-4 py-3">SKU & Product</th>
@@ -1426,8 +1426,8 @@ export function StoreMonitoringWorkbench() {
                   </div>
                 }
               />
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+              <div className="scrollbar-thin overflow-x-auto">
+                <table className="min-w-[640px] w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-border bg-muted/40 text-[11px] font-semibold uppercase text-muted-foreground">
                       <th className="px-4 py-3">Order & Delivery Date</th>
@@ -1508,8 +1508,8 @@ export function StoreMonitoringWorkbench() {
                     title="SKU Consumption & Replenishment Analysis"
                     description="Strictly separates Purchased Qty, Delivered Qty, Estimated Consumption (with waste %), and Actual POS/Inventory Consumption."
                   />
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                  <div className="scrollbar-thin overflow-x-auto">
+                    <table className="min-w-[640px] w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-border bg-muted/40 text-[11px] font-semibold uppercase text-muted-foreground">
                           <th className="px-4 py-3">SKU & Product</th>
@@ -1699,8 +1699,8 @@ export function StoreMonitoringWorkbench() {
                       </p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
+                    <div className="scrollbar-thin overflow-x-auto">
+                      <table className="min-w-[640px] w-full text-left text-xs">
                         <thead>
                           <tr className="border-b border-border bg-muted/40 text-[11px] font-semibold uppercase text-muted-foreground">
                             <th className="px-4 py-3">Snapshot & SKU</th>
@@ -1886,8 +1886,8 @@ export function StoreMonitoringWorkbench() {
                   <h4 className="mb-2 text-xs font-bold uppercase text-muted-foreground">
                     Active POS Item &rarr; Distributor SKU Mappings
                   </h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                  <div className="scrollbar-thin overflow-x-auto">
+                    <table className="min-w-[640px] w-full text-left text-xs">
                       <thead>
                         <tr className="border-b border-border bg-muted/40 text-[11px] font-semibold uppercase text-muted-foreground">
                           <th className="px-3 py-2">POS Item Code</th>
@@ -2030,8 +2030,8 @@ export function StoreMonitoringWorkbench() {
                   title="Assigned Store Users & Sub-Role Permissions"
                   description="Each store user is strictly isolated to their store_id and governed by sub-role permissions."
                 />
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="scrollbar-thin overflow-x-auto">
+                  <table className="min-w-[640px] w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-border bg-muted/40 text-[11px] font-semibold uppercase text-muted-foreground">
                         <th className="px-4 py-3">Name & Email</th>

@@ -91,7 +91,7 @@ export function ProductsProcurementHub({
       />
 
       {/* Unified Module Switcher */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-1.5 shadow-sm">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto whitespace-nowrap rounded-xl border border-border bg-card p-1.5 shadow-sm [-webkit-overflow-scrolling:touch] sm:flex-wrap">
         <button
           type="button"
           onClick={() => setActiveTab("products")}
@@ -103,7 +103,7 @@ export function ProductsProcurementHub({
           )}
         >
           <Package className="h-3.5 w-3.5" />
-          Product Master (SKUs, Temperature, Shelf-Life & Catch-Weight)
+          Product Master<span className="hidden sm:inline"> (SKUs, Temperature, Shelf-Life &amp; Catch-Weight)</span>
           <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-[10px]">
             {products.length}
           </span>
@@ -119,7 +119,7 @@ export function ProductsProcurementHub({
           )}
         >
           <Users className="h-3.5 w-3.5" />
-          Suppliers, Scorecards, RFQs & Purchase Orders
+          Suppliers<span className="hidden sm:inline">, Scorecards, RFQs &amp; Purchase Orders</span>
           <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-[10px]">
             {purchaseOrders.length} POs
           </span>

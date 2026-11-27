@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { Badge, Surface } from "@/components/ui";
 import { cn } from "@/lib/format";
@@ -98,18 +99,18 @@ export function TableToolbar({
       <div className="flex flex-wrap items-center gap-2">
         {onSearchChange && (
           <label className="relative block w-full sm:w-64">
-            <Search className="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={search ?? ""}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder={searchPlaceholder}
-              className="input h-8 pl-8 pr-8 text-xs"
+              className="input pl-8 pr-11 text-xs"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => onSearchChange("")}
-                className="absolute right-1.5 top-1.5 rounded-md p-0.5 text-muted-foreground hover:bg-muted"
+                className="absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
                 aria-label="Clear search"
               >
                 <X className="h-3.5 w-3.5" />
@@ -162,7 +163,7 @@ export function TablePagination({
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="h-7 rounded-md border border-input bg-background px-2 text-xs"
+            className="h-11 rounded-md border border-input bg-background px-2 text-xs sm:h-7"
             aria-label="Page size"
           >
             {pageSizeOptions.map((s) => (
@@ -178,7 +179,7 @@ export function TablePagination({
           type="button"
           onClick={() => onPageChange(safePage - 1)}
           disabled={safePage <= 1}
-          className="btn btn-secondary btn-sm h-7 px-2"
+          className="btn btn-secondary btn-sm h-11 min-w-11 px-2 sm:h-7 sm:min-w-0"
           aria-label="Previous page"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
@@ -190,7 +191,7 @@ export function TablePagination({
           type="button"
           onClick={() => onPageChange(safePage + 1)}
           disabled={safePage >= totalPages}
-          className="btn btn-secondary btn-sm h-7 px-2"
+          className="btn btn-secondary btn-sm h-11 min-w-11 px-2 sm:h-7 sm:min-w-0"
           aria-label="Next page"
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -249,7 +250,14 @@ export function DataTable<T>({
   return (
     <div className={cn("overflow-hidden", className)}>
       <div className="table-shell">
-        <table className="table-fit" style={{ minWidth: minTableWidth }}>
+        <table
+          className="table-fit"
+          style={
+            minTableWidth
+              ? ({ "--table-min": minTableWidth } as React.CSSProperties)
+              : undefined
+          }
+        >
           <thead>
             <tr>
               {columns.map((col) => (
@@ -345,6 +353,52 @@ export function RowActions({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
+  const toggleMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const width = 176;
+    const estimatedHeight = Math.min(secondary?.length ?? 0, 8) * 42 + 12;
+    setMenuPos({
+      top: Math.max(8, Math.min(rect.bottom + 6, window.innerHeight - estimatedHeight - 8)),
+      left: Math.max(8, Math.min(window.innerWidth - width - 8, rect.right - width)),
+    });
+    setOpen(true);
+  };
+
   return (
     <div className={cn("relative inline-flex items-center gap-1", className)}>
       {primary?.map((action) => (
@@ -359,7 +413,7 @@ export function RowActions({
           title={action.label}
           aria-label={action.label}
           className={cn(
-            "rounded-md p-1.5 transition-colors disabled:opacity-40",
+            "flex h-11 w-11 items-center justify-center rounded-md p-1.5 transition-colors disabled:opacity-40 sm:h-auto sm:w-auto",
             action.tone === "danger"
               ? "text-muted-foreground hover:bg-red-50 hover:text-red-600"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -371,26 +425,23 @@ export function RowActions({
       {secondary && secondary.length > 0 && (
         <>
           <button
+            ref={buttonRef}
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen((v) => !v);
-            }}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={toggleMenu}
+            className="flex h-11 w-11 items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground sm:h-auto sm:w-auto"
             aria-label="More actions"
+            aria-expanded={open}
             title="More actions"
           >
             <span className="text-xs font-bold">⋯</span>
           </button>
-          {open && (
-            <>
-              <button
-                type="button"
-                aria-label="Close menu"
-                className="fixed inset-0 z-40 cursor-default"
-                onClick={() => setOpen(false)}
-              />
-              <div className="absolute right-0 top-8 z-50 min-w-[160px] overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+          {open && mounted &&
+            createPortal(
+              <div
+                ref={menuRef}
+                style={{ top: menuPos.top, left: menuPos.left }}
+                className="fixed z-[70] max-h-[calc(100dvh-1rem)] w-44 overflow-y-auto rounded-xl border border-border bg-card shadow-lg"
+              >
                 {secondary.map((action) => (
                   <button
                     key={action.label}
@@ -402,7 +453,7 @@ export function RowActions({
                     }}
                     disabled={action.disabled}
                     className={cn(
-                      "flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted disabled:opacity-40",
+                      "flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted disabled:opacity-40 sm:min-h-0",
                       action.tone === "danger" ? "text-red-700" : "text-foreground",
                     )}
                   >
@@ -410,9 +461,9 @@ export function RowActions({
                     {action.label}
                   </button>
                 ))}
-              </div>
-            </>
-          )}
+              </div>,
+              document.body,
+            )}
         </>
       )}
     </div>

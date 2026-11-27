@@ -61,19 +61,19 @@ export function InboundQualityHub({
       />
 
       {/* Unified Module Switcher */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-1.5 shadow-sm">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto whitespace-nowrap rounded-xl border border-border bg-card p-1.5 shadow-sm [-webkit-overflow-scrolling:touch] sm:flex-wrap">
         <button
           type="button"
           onClick={() => setActiveTab("inbound")}
           className={cn(
-            "flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all",
+            "flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all",
             activeTab === "inbound"
               ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
         >
           <Truck className="h-3.5 w-3.5" />
-          Inbound Shipments & Goods Receiving
+          Inbound Shipments<span className="hidden sm:inline"> & Goods Receiving</span>
           <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-[10px]">
             {initialShipments.length}
           </span>
@@ -82,14 +82,14 @@ export function InboundQualityHub({
           type="button"
           onClick={() => setActiveTab("quality")}
           className={cn(
-            "flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all",
+            "flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all",
             activeTab === "quality"
               ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:bg-muted hover:text-foreground",
           )}
         >
           <ShieldCheck className="h-3.5 w-3.5" />
-          Quality Gate, HACCP Checkpoints & CAPA
+          Quality Gate<span className="hidden sm:inline">, HACCP Checkpoints & CAPA</span>
         </button>
       </div>
 

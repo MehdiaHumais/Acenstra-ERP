@@ -9,6 +9,7 @@ import {
   CircleHelp,
   CornerDownLeft,
   Globe,
+  MoreHorizontal,
   Search,
   Settings,
   ShieldCheck,
@@ -69,13 +70,20 @@ export function HeaderActions({
   const router = useRouter();
   const pathname = usePathname();
   const searchRef = useRef<HTMLDivElement>(null);
+  const mobileSearchRef = useRef<HTMLDivElement>(null);
   const notificationsPanelRef = useRef<HTMLDivElement | null>(null);
   const notificationsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const morePanelRef = useRef<HTMLDivElement | null>(null);
+  const moreButtonRef = useRef<HTMLButtonElement | null>(null);
+  const menuPanelRef = useRef<HTMLDivElement | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [readIds, setReadIds] = useState<number[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [orders, setOrders] = useState<SalesOrder[]>([]);
@@ -117,6 +125,15 @@ export function HeaderActions({
     return () => {
       cancelled = true;
     };
+  }, [pathname]);
+
+  useEffect(() => {
+    setSearchOpen(false);
+    setMobileSearchOpen(false);
+    setNotificationsOpen(false);
+    setHelpOpen(false);
+    setMenuOpen(false);
+    setMoreOpen(false);
   }, [pathname]);
 
   // Live notification polling: new messages/requests must reach the bell
@@ -242,6 +259,26 @@ export function HeaderActions({
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [notificationsOpen]);
 
+  // The mobile "more" and user menus need the same outside-tap behavior as
+  // notifications; the header no longer traps fixed overlays, but this also
+  // covers taps that start on a nested element.
+  useEffect(() => {
+    if (!moreOpen && !menuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (moreOpen) {
+        if (morePanelRef.current?.contains(target) || moreButtonRef.current?.contains(target)) return;
+        setMoreOpen(false);
+      }
+      if (menuOpen) {
+        if (menuPanelRef.current?.contains(target) || menuButtonRef.current?.contains(target)) return;
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [moreOpen, menuOpen]);
+
   const globalUnread = alerts.filter((alert) => !readIds.includes(alert.id)).length;
   const unread = globalUnread + userNotifications.filter((n) => !n.is_read).length;
 
@@ -249,14 +286,19 @@ export function HeaderActions({
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setSearchOpen(false);
+        setMobileSearchOpen(false);
         setNotificationsOpen(false);
         setHelpOpen(false);
         setMenuOpen(false);
+        setMoreOpen(false);
       }
     };
     const closeOnOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setSearchOpen(false);
+      }
+      if (mobileSearchRef.current && !mobileSearchRef.current.contains(event.target as Node)) {
+        setMobileSearchOpen(false);
       }
     };
     document.addEventListener("keydown", closeOnEscape);
@@ -273,10 +315,56 @@ export function HeaderActions({
     return () => clearTimeout(timer);
   }, [notice]);
 
+  const toggleLocaleWithNotice = () => {
+    if (!onToggleLocale) return;
+    onToggleLocale();
+    setNotice(
+      locale === "en"
+        ? "Lingua impostata su Italiano (IT) · Localizzazione attiva."
+        : "Language switched to English (EN) · Localisation active."
+    );
+    setMoreOpen(false);
+  };
+
   const openResult = (result: SearchResult) => {
     setSearchOpen(false);
+    setMobileSearchOpen(false);
     setQuery("");
     router.push(result.href);
+  };
+
+  const renderSearchResults = () => {
+    if (!query.trim()) return null;
+    if (results.length === 0) {
+      return (
+        <p className="px-4 py-6 text-center text-xs text-muted-foreground">
+          Nothing matched. Try an order number, batch code or product.
+        </p>
+      );
+    }
+    return (
+      <ul className="max-h-[min(60vh,20rem)] overflow-y-auto py-1">
+        {results.map((result) => (
+          <li key={result.key}>
+            <button
+              type="button"
+              onClick={() => openResult(result)}
+              className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-muted"
+            >
+              <span className="mt-0.5 rounded-md bg-secondary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-secondary-foreground">
+                {result.kind}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-semibold">{result.label}</span>
+                <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                  {result.detail}
+                </span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
   };
 
   const onSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -288,13 +376,55 @@ export function HeaderActions({
     }
     if (query.trim()) {
       setSearchOpen(false);
+      setMobileSearchOpen(false);
       router.push("/orders");
     }
   };
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <div ref={mobileSearchRef} className="relative md:hidden">
+          <button
+            type="button"
+            aria-label="Search the ERP"
+            aria-expanded={mobileSearchOpen}
+            onClick={() => {
+              setMobileSearchOpen((open) => !open);
+              setMoreOpen(false);
+              setNotificationsOpen(false);
+              setMenuOpen(false);
+            }}
+            className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground sm:h-9 sm:w-9"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+          {mobileSearchOpen && (
+            <div className="fixed inset-x-2 top-14 z-50 overflow-hidden rounded-xl border border-border bg-card shadow-xl md:hidden">
+              <label className="relative block p-3 pb-2">
+                <span className="sr-only">Search the ERP</span>
+                <Search className="pointer-events-none absolute left-5 top-5 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="search"
+                  autoFocus
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  onKeyDown={onSearchKeyDown}
+                  placeholder={locale === "it" ? "Cerca ordini, lotti, prodotti…" : "Search orders, lots, products…"}
+                  className="input pl-9"
+                />
+              </label>
+              {renderSearchResults()}
+              <div className="flex items-center justify-between border-t border-border bg-muted/40 px-3 py-2 text-[10px] text-muted-foreground">
+                <span>{results.length} results</span>
+                <span className="flex items-center gap-1">
+                  <CornerDownLeft className="h-3 w-3" /> open first
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div ref={searchRef} className="relative hidden md:block">
           <label className="relative block">
             <span className="sr-only">Search the ERP</span>
@@ -309,38 +439,12 @@ export function HeaderActions({
               onFocus={() => setSearchOpen(true)}
               onKeyDown={onSearchKeyDown}
               placeholder={locale === "it" ? "Cerca ordini, lotti, prodotti…" : "Search orders, lots, products…"}
-              className="h-9 w-64 rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground/70"
+              className="h-9 w-56 rounded-lg border border-input bg-card pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground/70 lg:w-64"
             />
           </label>
           {searchOpen && query.trim() && (
-            <div className="absolute left-0 top-11 z-50 w-[24rem] overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-              {results.length === 0 ? (
-                <p className="px-4 py-6 text-center text-xs text-muted-foreground">
-                  Nothing matched. Try an order number, batch code or product.
-                </p>
-              ) : (
-                <ul className="max-h-80 overflow-y-auto py-1">
-                  {results.map((result) => (
-                    <li key={result.key}>
-                      <button
-                        type="button"
-                        onClick={() => openResult(result)}
-                        className="flex w-full items-start gap-3 px-4 py-2.5 text-left hover:bg-muted"
-                      >
-                        <span className="mt-0.5 rounded-md bg-secondary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-secondary-foreground">
-                          {result.kind}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-xs font-semibold">{result.label}</span>
-                          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                            {result.detail}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+            <div className="absolute left-0 top-11 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+              {renderSearchResults()}
               <div className="flex items-center justify-between border-t border-border bg-muted/40 px-3 py-2 text-[10px] text-muted-foreground">
                 <span>{results.length} results</span>
                 <span className="flex items-center gap-1">
@@ -361,7 +465,7 @@ export function HeaderActions({
               setNotificationsOpen((open) => !open);
               setMenuOpen(false);
             }}
-            className="relative rounded-lg border border-border bg-card p-2 text-muted-foreground hover:text-foreground"
+            className="relative flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground sm:h-9 sm:w-9"
           >
             <Bell className="h-4 w-4" />
             {unread > 0 && (
@@ -379,7 +483,7 @@ export function HeaderActions({
                   className="fixed inset-0 z-40 cursor-default"
                   onClick={() => setNotificationsOpen(false)}
                 />
-                <div className="absolute right-0 top-11 z-50 w-80 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+                <div className="fixed inset-x-2 top-14 z-50 max-h-[calc(100dvh-4rem)] overflow-hidden rounded-xl border border-border bg-card shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:max-h-none sm:w-80">
                 <div className="flex items-center justify-between border-b border-border px-4 py-3">
                   <div>
                     <p className="text-xs font-semibold">Notifications</p>
@@ -410,7 +514,7 @@ export function HeaderActions({
                     <CheckCheck className="h-3.5 w-3.5" /> Mark all read
                   </button>
                 </div>
-                <ul className="max-h-96 overflow-y-auto">
+                <ul className="scrollbar-thin max-h-[min(24rem,calc(100dvh-11rem))] overflow-y-auto sm:max-h-96">
                   {userNotifications.length > 0 && (
                     <li className="border-b border-border/60 px-4 py-2">
                       <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">For you</p>
@@ -499,15 +603,8 @@ export function HeaderActions({
             type="button"
             aria-label="Toggle language (Italian / English)"
             title={locale === "it" ? "Passa a Inglese (EN)" : "Switch to Italian (IT)"}
-            onClick={() => {
-              onToggleLocale();
-              setNotice(
-                locale === "en"
-                  ? "Lingua impostata su Italiano (IT) · Localizzazione attiva."
-                  : "Language switched to English (EN) · Localisation active."
-              );
-            }}
-            className="flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground hover:border-primary/40 hover:text-foreground"
+            onClick={toggleLocaleWithNotice}
+            className="hidden h-9 items-center gap-1 rounded-lg border border-border bg-card px-2.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground hover:border-primary/40 hover:text-foreground sm:flex"
           >
             <Globe className="h-3.5 w-3.5 text-primary" />
             <span>{locale === "it" ? "IT" : "EN"}</span>
@@ -518,7 +615,7 @@ export function HeaderActions({
           type="button"
           aria-label="Ask Ascentra AI"
           onClick={() => window.dispatchEvent(new Event("ascentra:open-ai"))}
-          className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+          className="hidden h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground sm:flex"
         >
           <Sparkles className="h-3.5 w-3.5 text-primary" />
           <span className="hidden sm:inline">Ask AI</span>
@@ -528,12 +625,74 @@ export function HeaderActions({
           type="button"
           aria-label="Help"
           onClick={() => setHelpOpen(true)}
-          className="hidden rounded-lg border border-border bg-card p-2 text-muted-foreground hover:text-foreground sm:block"
+          className="hidden h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground sm:flex"
         >
           <CircleHelp className="h-4 w-4" />
         </button>
 
-        <div className="relative ml-1 flex min-h-[32px] items-center gap-2 border-l border-border pl-2">
+        <div className="relative sm:hidden">
+          <button
+            type="button"
+            ref={moreButtonRef}
+            aria-label="More header actions"
+            aria-expanded={moreOpen}
+            onClick={() => {
+              setMoreOpen((open) => !open);
+              setNotificationsOpen(false);
+              setMobileSearchOpen(false);
+              setMenuOpen(false);
+            }}
+            className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground sm:h-9 sm:w-9"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </button>
+          {moreOpen && (
+            <>
+              <button
+                type="button"
+                aria-label="Close more actions"
+                className="fixed inset-0 z-40 cursor-default"
+                onClick={() => setMoreOpen(false)}
+              />
+              <div
+                ref={morePanelRef}
+                className="absolute right-0 top-11 z-50 max-h-[calc(100dvh-4rem)] w-[min(15rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border bg-card py-1 shadow-lg"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new Event("ascentra:open-ai"));
+                    setMoreOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs hover:bg-muted"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-primary" /> Ask Ascentra AI
+                </button>
+                {onToggleLocale && (
+                  <button
+                    type="button"
+                    onClick={toggleLocaleWithNotice}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs hover:bg-muted"
+                  >
+                    <Globe className="h-3.5 w-3.5 text-primary" /> Switch to {locale === "en" ? "Italian" : "English"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHelpOpen(true);
+                    setMoreOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs hover:bg-muted"
+                >
+                  <CircleHelp className="h-3.5 w-3.5 text-primary" /> Help & shortcuts
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="relative ml-0 flex min-h-[36px] items-center gap-2 border-l border-border pl-1.5 sm:ml-1 sm:pl-2">
           {!authReady ? (
             <div className="h-8 w-24 animate-pulse rounded-lg bg-muted" aria-hidden="true" />
           ) : !currentUser ? (
@@ -548,13 +707,14 @@ export function HeaderActions({
           ) : (
             <>
               <button
+                ref={menuButtonRef}
                 type="button"
                 onClick={() => {
                   setMenuOpen((open) => !open);
                   setNotificationsOpen(false);
                 }}
                 aria-expanded={menuOpen}
-                className="flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-muted"
+                className="flex min-h-[36px] items-center gap-2 rounded-lg px-1 py-1 hover:bg-muted"
               >
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#061222] text-xs font-bold text-white">
                   {currentUser.name
@@ -577,7 +737,10 @@ export function HeaderActions({
                     className="fixed inset-0 z-40 cursor-default"
                     onClick={() => setMenuOpen(false)}
                   />
-                  <div className="absolute right-0 top-12 z-50 w-64 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+                  <div
+                    ref={menuPanelRef}
+                    className="absolute right-0 top-12 z-50 max-h-[calc(100dvh-4rem)] w-[min(16rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border bg-card shadow-lg"
+                  >
                     <div className="border-b border-border px-4 py-3">
                       <p className="text-xs font-semibold">{currentUser.name}</p>
                       <p className="text-[11px] text-muted-foreground">{currentUser.email}</p>
@@ -607,7 +770,7 @@ export function HeaderActions({
                               router.refresh();
                             }
                           }}
-                          className="mt-1.5 h-8 w-full rounded-md border border-input bg-background px-2 text-xs outline-none"
+                          className="mt-1.5 h-11 w-full max-w-full rounded-md border border-input bg-background px-2 text-xs outline-none sm:h-8"
                         >
                           {availableRoles.map((u) => (
                             <option key={u.email} value={u.email}>
@@ -668,8 +831,13 @@ export function HeaderActions({
       </div>
 
       {helpOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-xl border border-border bg-card shadow-xl">
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Help and keyboard shortcuts"
+            className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-border bg-card shadow-xl sm:max-h-[90vh] sm:overflow-visible sm:rounded-xl"
+          >
             <div className="flex items-start justify-between border-b border-border px-5 py-4">
               <div>
                 <h2 className="text-sm font-semibold">Help & keyboard shortcuts</h2>
@@ -713,7 +881,7 @@ export function HeaderActions({
       )}
 
       {notice && (
-        <div className="fixed bottom-5 right-5 z-[80] max-w-sm rounded-xl border border-border bg-[#061222] px-4 py-3 text-xs font-medium text-white shadow-xl">
+        <div className="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-3 right-3 z-[80] rounded-xl border border-border bg-[#061222] px-4 py-3 text-xs font-medium text-white shadow-xl sm:bottom-5 sm:left-auto sm:right-5 sm:max-w-sm">
           {notice}
         </div>
       )}

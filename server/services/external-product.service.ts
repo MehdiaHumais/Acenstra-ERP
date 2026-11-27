@@ -16,6 +16,7 @@ import {
   type ProductWriteInput
 } from "@/server/services/product-master.service";
 import type { ProductDetail } from "@/lib/types";
+import { canonicalBarcodeFormat } from "@/lib/barcode-decode";
 import {
   normalizeBarcode,
   addBarcodeForProduct,
@@ -25,6 +26,7 @@ import {
 export interface ExternalProductInput {
   mode: "create" | "associate";
   barcode: string;
+  format?: string;
   confirmed_external?: boolean;
   name?: string;
   brand?: string | null;
@@ -102,7 +104,9 @@ export function registerExternalProduct(
   }
 
   const source = sanitizeText(input.source, 120) ?? "external";
-  const format = detectFormat(barcode);
+  const format = input.format
+    ? canonicalBarcodeFormat(input.format)
+    : detectFormat(barcode);
 
   // ------------------------------------------------------------------
   if (input.mode === "associate") {

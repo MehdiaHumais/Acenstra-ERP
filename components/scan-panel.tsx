@@ -65,7 +65,7 @@ export function ScanPanel({ lots }: { lots: Lot[] }) {
         </span>
         <div>
           <p className="text-sm font-semibold">Scan verification</p>
-          <p className="text-[11px] text-muted-foreground">Camera, USB scanner or keyboard wedge</p>
+          <p className="text-[11px] text-muted-foreground">USB scanner or keyboard wedge</p>
         </div>
       </div>
 

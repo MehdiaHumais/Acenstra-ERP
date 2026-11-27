@@ -36,12 +36,29 @@
 
   html {
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
     min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
     text-rendering: optimizeLegibility;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+
+  button,
+  a,
+  label,
+  select {
+    touch-action: manipulation;
   }
 
   :where(a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])):focus-visible {
@@ -74,13 +91,15 @@
   .table-shell {
     @apply w-full max-w-full overflow-x-auto;
     container-type: inline-size;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Compact enterprise table — fills its card, columns stay pinned (no spreading).
      The flexible column (no <col> width) absorbs the slack; actions sit at the right edge. */
   .table-fit {
     width: 100%;
-    min-width: 720px;
+    min-width: var(--table-min, 720px);
     max-width: 100%;
     table-layout: fixed;
     border-collapse: separate;
@@ -213,6 +232,97 @@ main .grid > * {
 
   .data-table tbody td {
     @apply px-2 py-2;
+  }
+}
+
+/* Phone layout: keep enterprise tables scrollable, but make every unbounded
+   surface fit the viewport and stop iOS from zooming when a field is focused. */
+@media (max-width: 640px) {
+  .surface,
+  [role="dialog"] {
+    max-width: 100%;
+  }
+
+  [role="dialog"] {
+    max-height: calc(100dvh - 1rem);
+  }
+
+  /* iOS/Android guidance: 44px minimum for every interactive control. */
+  button,
+  .btn,
+  .btn-sm {
+    min-height: 44px;
+    min-width: 44px !important;
+  }
+
+  /* Flex children default to min-width:auto, which lets long selects/labels
+     push the whole page sideways. Let them shrink and wrap instead. */
+  main .flex > *,
+  main .grid > * {
+    min-width: 0;
+  }
+
+  /* Inline per-table widths are exposed as --table-min; keep the scroller,
+     but cap the table at a readable phone width instead of 720–1180px. */
+  .table-fit,
+  .data-table {
+    min-width: min(680px, var(--table-min, 680px));
+    font-size: 11px;
+  }
+
+  .table-fit thead th,
+  .table-fit tbody td,
+  .data-table thead th,
+  .data-table tbody td {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    min-height: 44px;
+    min-width: 44px !important;
+    max-width: 100%;
+    font-size: 16px !important;
+  }
+
+  .field-label {
+    letter-spacing: 0.04em;
+  }
+}
+
+/* Large phones and tablets (481–1024px) still need finger-sized targets and
+   shrinkable flex/grid children. Desktops keep their compact controls. */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .surface,
+  [role="dialog"] {
+    max-width: 100%;
+  }
+
+  [role="dialog"] {
+    max-height: calc(100dvh - 1rem);
+  }
+
+  button,
+  .btn,
+  .btn-sm {
+    min-height: 44px;
+    min-width: 44px !important;
+  }
+
+  main .flex > *,
+  main .grid > * {
+    min-width: 0;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    min-height: 44px;
+    min-width: 44px !important;
+    max-width: 100%;
+    font-size: 16px !important;
   }
 }
 

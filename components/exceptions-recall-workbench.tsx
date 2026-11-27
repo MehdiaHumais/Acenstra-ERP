@@ -1033,10 +1033,15 @@ export function ExceptionsRecallWorkbench() {
 
       {/* MODAL 1: QUARANTINE HOLD */}
       {isQuarantineModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-0 sm:items-center sm:p-4" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quarantine-modal-title"
+            className="max-h-[92dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-t-2xl border border-border bg-card p-4 shadow-xl sm:rounded-xl sm:p-6"
+          >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+              <h3 id="quarantine-modal-title" className="text-base font-bold text-foreground flex items-center gap-2">
                 <Lock className="h-4 w-4 text-amber-500" />
                 Initiate Warehouse Quarantine Hold
               </h3>
@@ -1070,17 +1075,17 @@ export function ExceptionsRecallWorkbench() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-wrap justify-end gap-2 pt-2">
               <button
                 onClick={() => setIsQuarantineModalOpen(false)}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+                className="w-full justify-center rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent sm:w-auto"
               >
                 Cancel
               </button>
               <Can permission="traceability:quarantine" mode="disable">
                 <button
                   onClick={handleQuarantineHold}
-                  className="rounded-lg bg-amber-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-amber-700"
+                  className="w-full justify-center rounded-lg bg-amber-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-amber-700 sm:w-auto"
                 >
                   Apply Quarantine Hold
                 </button>
@@ -1092,10 +1097,15 @@ export function ExceptionsRecallWorkbench() {
 
       {/* MODAL 2: RELEASE QUARANTINE */}
       {isReleaseModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-0 sm:items-center sm:p-4" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="release-modal-title"
+            className="max-h-[92dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-t-2xl border border-border bg-card p-4 shadow-xl sm:rounded-xl sm:p-6"
+          >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+              <h3 id="release-modal-title" className="text-base font-bold text-foreground flex items-center gap-2">
                 <Unlock className="h-4 w-4 text-marine-mid" />
                 Release Lot to Available Stock
               </h3>
@@ -1129,17 +1139,17 @@ export function ExceptionsRecallWorkbench() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-wrap justify-end gap-2 pt-2">
               <button
                 onClick={() => setIsReleaseModalOpen(false)}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+                className="w-full justify-center rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent sm:w-auto"
               >
                 Cancel
               </button>
               <Can permission="traceability:quarantine" mode="disable">
                 <button
                   onClick={handleReleaseQuarantine}
-                  className="rounded-lg bg-marine-steel px-4 py-1.5 text-xs font-bold text-white hover:bg-marine-steelLight"
+                  className="w-full justify-center rounded-lg bg-marine-steel px-4 py-1.5 text-xs font-bold text-white hover:bg-marine-steelLight sm:w-auto"
                 >
                   Sign & Release Stock
                 </button>
@@ -1151,10 +1161,15 @@ export function ExceptionsRecallWorkbench() {
 
       {/* MODAL 3: LOG RECOVERY */}
       {isRecoveryModalOpen && selectedRecall && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-0 sm:items-center sm:p-4" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="recovery-modal-title"
+            className="max-h-[92dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-t-2xl border border-border bg-card p-4 shadow-xl sm:rounded-xl sm:p-6"
+          >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+              <h3 id="recovery-modal-title" className="text-base font-bold text-foreground flex items-center gap-2">
                 <Truck className="h-4 w-4 text-primary" />
                 Log Returned Goods Intake
               </h3>
@@ -1181,7 +1196,7 @@ export function ExceptionsRecallWorkbench() {
                   ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div>
                   <label className="text-muted-foreground font-semibold">Recovered Cases</label>
                   <input
@@ -1201,7 +1216,7 @@ export function ExceptionsRecallWorkbench() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div>
                   <label className="text-muted-foreground font-semibold">Tamper Seal #</label>
                   <input
@@ -1224,17 +1239,17 @@ export function ExceptionsRecallWorkbench() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-wrap justify-end gap-2 pt-2">
               <button
                 onClick={() => setIsRecoveryModalOpen(false)}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+                className="w-full justify-center rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent sm:w-auto"
               >
                 Cancel
               </button>
               <Can permission="traceability:quarantine" mode="disable">
                 <button
                   onClick={() => handleRecordRecovery(selectedRecall.id)}
-                  className="rounded-lg bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90"
+                  className="w-full justify-center rounded-lg bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 sm:w-auto"
                 >
                   Verify & Intake to Quarantine
                 </button>
@@ -1246,10 +1261,15 @@ export function ExceptionsRecallWorkbench() {
 
       {/* MODAL 4: CLOSE RECALL */}
       {isCloseRecallModalOpen && selectedRecall && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm p-0 sm:items-center sm:p-4" role="presentation">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="close-recall-modal-title"
+            className="max-h-[92dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-t-2xl border border-border bg-card p-4 shadow-xl sm:rounded-xl sm:p-6"
+          >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+              <h3 id="close-recall-modal-title" className="text-base font-bold text-foreground flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-marine-mid" />
                 Formal Recall Closure Sign-off
               </h3>
@@ -1274,17 +1294,17 @@ export function ExceptionsRecallWorkbench() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-wrap justify-end gap-2 pt-2">
               <button
                 onClick={() => setIsCloseRecallModalOpen(false)}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+                className="w-full justify-center rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent sm:w-auto"
               >
                 Cancel
               </button>
               <Can permission="recalls.manage" mode="disable">
                 <button
                   onClick={() => handleCloseRecall(selectedRecall.id)}
-                  className="rounded-lg bg-marine-steel px-4 py-1.5 text-xs font-bold text-white hover:bg-marine-steelLight"
+                  className="w-full justify-center rounded-lg bg-marine-steel px-4 py-1.5 text-xs font-bold text-white hover:bg-marine-steelLight sm:w-auto"
                 >
                   Formally Sign & Close Recall
                 </button>

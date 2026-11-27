@@ -118,6 +118,7 @@ async function startServer() {
       ...process.env,
       NODE_ENV: useProduction ? "production" : "development",
       SQLITE_DB_PATH: dbPath,
+      DB_ENGINE: "sqlite",
       SEED_DEMO_DATA: "true",
       NEXT_TELEMETRY_DISABLED: "1",
       PORT: String(port)

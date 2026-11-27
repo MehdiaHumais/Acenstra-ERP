@@ -1,7 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
 import { openSqliteDatabase, SqliteDatabaseSync } from "@/server/db/sqlite-driver";
+import { openPostgresDatabase } from "@/server/db/postgres-driver";
 import { hashPassword } from "@/server/security/crypto";
+
+/**
+ * Production can run on SQLite (default) or on Supabase Postgres. The Postgres
+ * path uses a synchronous worker facade so the existing 1,200+ sync call sites
+ * need no changes. Set DB_ENGINE=postgres in production to use Supabase.
+ */
+const DB_ENGINE = (process.env.DB_ENGINE || "sqlite").trim().toLowerCase();
+const IS_POSTGRES = DB_ENGINE === "postgres" || DB_ENGINE === "postgresql" || DB_ENGINE === "supabase";
+
+/** Test helpers always use an isolated in-memory SQLite database, never production data. */
+let forceSqliteForTests = false;
 
 /**
  * `next build` starts several static-generation workers that import API routes
@@ -277,6 +289,8 @@ CREATE TABLE IF NOT EXISTS products (
   batch_tracking INTEGER NOT NULL DEFAULT 0,
   weight_tolerance_pct REAL,
   required_documents_json TEXT,
+  image_url TEXT,
+  image_source TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -3232,10 +3246,30 @@ export function getDb(): SqliteDatabaseSync {
   if (global.__ascentraDbInstance) {
     // Schema sync runs once per process (on first open), not on every query.
     // Re-running it per call caused severe page-load slowdowns.
-    if (!(global as any).__ascentraSchemaSynced) {
+    if ((!IS_POSTGRES || forceSqliteForTests) && !(global as any).__ascentraSchemaSynced) {
       syncSchemaColumnsFromCreateTables(global.__ascentraDbInstance);
       (global as any).__ascentraSchemaSynced = true;
     }
+    return global.__ascentraDbInstance;
+  }
+
+  if (IS_POSTGRES && !forceSqliteForTests) {
+    // Schema and data are provisioned by scripts/migrate-sqlite-to-postgres.ts.
+    // Running SQLite's PRAGMA/ALTER migration path here would be invalid SQL.
+    global.__ascentraDbInstance = openPostgresDatabase();
+    // Additive product-photo columns can be applied to an existing Supabase
+    // database without a destructive re-import of the migrated data.
+    for (const alter of [
+      "ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT",
+      "ALTER TABLE products ADD COLUMN IF NOT EXISTS image_source TEXT",
+    ]) {
+      try {
+        global.__ascentraDbInstance.exec(alter);
+      } catch {
+        // Table may not exist yet during initial provisioning; migrate script owns it.
+      }
+    }
+    (global as any).__ascentraSchemaSynced = true;
     return global.__ascentraDbInstance;
   }
 
@@ -3338,6 +3372,8 @@ export function getDb(): SqliteDatabaseSync {
     "ALTER TABLE products ADD COLUMN batch_tracking INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE products ADD COLUMN weight_tolerance_pct REAL",
     "ALTER TABLE products ADD COLUMN required_documents_json TEXT",
+    "ALTER TABLE products ADD COLUMN image_url TEXT",
+    "ALTER TABLE products ADD COLUMN image_source TEXT",
   ];
   for (const sql of productMigrations) {
     try {
@@ -4142,6 +4178,7 @@ export function withTransaction<T>(fn: (db: SqliteDatabaseSync) => T): T {
 
 export function resetDatabaseForTests(): SqliteDatabaseSync {
   txDepth = 0;
+  forceSqliteForTests = true;
   process.env.SQLITE_DB_PATH = ":memory:";
   process.env.SEED_DEMO_DATA = "true";
   global.__ascentraDbInstance = undefined;

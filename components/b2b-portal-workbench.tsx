@@ -686,7 +686,7 @@ export function B2bPortalWorkbench() {
       )}
 
       {/* Top Customer Header & Account Exposure */}
-      <Surface className="p-5">
+      <Surface className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -714,7 +714,7 @@ export function B2bPortalWorkbench() {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             {/* In-app notifications */}
-            <div className="relative self-start sm:self-auto">
+            <div className="relative w-full min-w-0 self-start sm:w-auto sm:self-auto">
               <button
                 type="button"
                 onClick={() => setShowNotifications((prev) => !prev)}
@@ -730,7 +730,7 @@ export function B2bPortalWorkbench() {
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 z-40 mt-2 w-80 max-h-96 overflow-y-auto rounded-xl border border-border bg-background shadow-2xl">
+                <div className="absolute left-0 right-0 z-40 mt-2 max-h-[min(24rem,calc(100dvh-11rem))] w-full min-w-0 overflow-y-auto rounded-xl border border-border bg-background shadow-2xl sm:left-auto sm:right-0 sm:w-80 sm:max-h-96">
                   <div className="flex items-center justify-between border-b border-border px-3 py-2">
                     <span className="text-xs font-bold text-foreground">Customer Notifications</span>
                     <Can permission="orders.read" mode="disable">
@@ -790,15 +790,15 @@ export function B2bPortalWorkbench() {
 
             {/* Customer Switcher (for authorized staff order-entry on behalf of customer) */}
             {customers.length > 1 && (
-              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
-                <label htmlFor="customer-select" className="text-xs font-medium text-muted-foreground">
+              <div className="flex w-full min-w-0 flex-col gap-1.5 sm:w-auto sm:flex-row sm:items-center">
+                <label htmlFor="customer-select" className="shrink-0 text-xs font-medium text-muted-foreground">
                   Ordering as / on behalf of:
                 </label>
                 <select
                   id="customer-select"
                   value={selectedCustomerId}
                   onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="rounded-md border border-input bg-background px-3 py-1.5 text-xs font-semibold shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="input w-full min-w-0 max-w-full text-xs font-semibold shadow-sm sm:w-auto sm:max-w-[26rem]"
                 >
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -851,10 +851,10 @@ export function B2bPortalWorkbench() {
       </Surface>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-border bg-background">
+      <div className="scrollbar-thin flex overflow-x-auto whitespace-nowrap border-b border-border bg-background">
         <button
           onClick={() => setActiveTab("catalog")}
-          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-semibold transition-colors ${
+          className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-xs font-semibold transition-colors sm:min-h-0 sm:px-5 ${
             activeTab === "catalog"
               ? "border-primary text-primary"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -867,7 +867,7 @@ export function B2bPortalWorkbench() {
 
         <button
           onClick={() => setActiveTab("cart")}
-          className={`relative flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-semibold transition-colors ${
+          className={`relative flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-xs font-semibold transition-colors sm:min-h-0 sm:px-5 ${
             activeTab === "cart"
               ? "border-primary text-primary"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -884,7 +884,7 @@ export function B2bPortalWorkbench() {
 
         <button
           onClick={() => setActiveTab("orders")}
-          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-semibold transition-colors ${
+          className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-xs font-semibold transition-colors sm:min-h-0 sm:px-5 ${
             activeTab === "orders"
               ? "border-primary text-primary"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -898,7 +898,7 @@ export function B2bPortalWorkbench() {
         {pendingApprovals.length > 0 && (
           <button
             onClick={() => setActiveTab("approvals")}
-            className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-semibold transition-colors ${
+            className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-xs font-semibold transition-colors sm:min-h-0 sm:px-5 ${
               activeTab === "approvals"
                 ? "border-amber-600 text-amber-700"
                 : "border-transparent text-amber-700 hover:text-amber-800"
@@ -914,7 +914,7 @@ export function B2bPortalWorkbench() {
 
         <button
           onClick={() => setActiveTab("contracts")}
-          className={`flex items-center gap-2 border-b-2 px-5 py-3 text-xs font-semibold transition-colors ${
+          className={`flex min-h-[44px] shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-xs font-semibold transition-colors sm:min-h-0 sm:px-5 ${
             activeTab === "contracts"
               ? "border-primary text-primary"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -949,7 +949,7 @@ export function B2bPortalWorkbench() {
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="rounded-md border border-input bg-background px-2.5 py-1.5 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="min-w-0 max-w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 >
                   {categories.map((c) => (
                     <option key={c} value={c}>
@@ -964,7 +964,7 @@ export function B2bPortalWorkbench() {
                 <select
                   value={selectedTempZone}
                   onChange={(e) => setSelectedTempZone(e.target.value)}
-                  className="rounded-md border border-input bg-background px-2.5 py-1.5 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="min-w-0 max-w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 >
                   <option value="all">All Zones</option>
                   <option value="chilled">Chilled</option>
@@ -1407,8 +1407,8 @@ export function B2bPortalWorkbench() {
               No orders found matching the filter criteria.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+            <div className="scrollbar-thin overflow-x-auto">
+              <table className="min-w-[640px] w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-border bg-muted/40 text-[11px] font-bold text-muted-foreground">
                     <th className="py-2.5 px-3">Order Number</th>
@@ -1595,7 +1595,7 @@ export function B2bPortalWorkbench() {
 
                 {/* Items in this contract */}
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="min-w-[640px] w-full text-left text-xs">
                     <thead>
                       <tr className="border-b border-border bg-muted/30 text-[10px] font-bold text-muted-foreground uppercase">
                         <th className="py-2 px-3">SKU</th>
@@ -1642,8 +1642,12 @@ export function B2bPortalWorkbench() {
       {/* MODAL: PRODUCT DETAIL INSPECTION                                          */}
       {/* ========================================================================= */}
       {viewingProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="max-h-[92dvh] w-full max-w-lg space-y-4 overflow-y-auto rounded-t-2xl border border-border bg-background p-4 shadow-2xl animate-in fade-in zoom-in-95 sm:max-h-[90vh] sm:rounded-xl sm:p-6"
+          >
             <div className="flex items-start justify-between border-b border-border pb-3">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
@@ -1730,8 +1734,12 @@ export function B2bPortalWorkbench() {
       {/* MODAL: ORDER DETAILS, TIMELINE, DOCUMENTS & AMENDMENTS                     */}
       {/* ========================================================================= */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-border bg-background p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="max-h-[92dvh] w-full max-w-2xl space-y-5 overflow-y-auto rounded-t-2xl border border-border bg-background p-4 shadow-2xl animate-in fade-in zoom-in-95 sm:max-h-[90vh] sm:rounded-xl sm:p-6"
+          >
             <div className="flex items-start justify-between border-b border-border pb-3">
               <div>
                 <div className="flex items-center gap-2">
@@ -1775,8 +1783,8 @@ export function B2bPortalWorkbench() {
             </div>
 
             {/* Line items table */}
-            <div className="border border-border rounded-lg overflow-hidden">
-              <table className="w-full text-left text-xs">
+            <div className="scrollbar-thin overflow-x-auto rounded-lg border border-border">
+              <table className="min-w-[640px] w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-border bg-muted/40 text-[10px] font-bold text-muted-foreground uppercase">
                     <th className="py-2 px-3">SKU</th>
@@ -2071,10 +2079,12 @@ export function B2bPortalWorkbench() {
       {/* MODAL: MAKER-CHECKER APPROVE MODAL                                        */}
       {/* ========================================================================= */}
       {approvingOrderId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4">
           <form
+            role="dialog"
+            aria-modal="true"
             onSubmit={handleApproveCredit}
-            className="w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95"
+            className="max-h-[92dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-t-2xl border border-border bg-background p-4 shadow-2xl animate-in fade-in zoom-in-95 sm:max-h-[90vh] sm:rounded-xl sm:p-6"
           >
             <div className="flex items-center gap-2 text-amber-700 font-bold text-base">
               <ShieldAlert className="h-5 w-5" />

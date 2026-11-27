@@ -63,7 +63,7 @@ export function OrdersPortalHub({
       />
 
       {/* Unified Module Switcher */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-1.5 shadow-sm">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto whitespace-nowrap rounded-xl border border-border bg-card p-1.5 shadow-sm [-webkit-overflow-scrolling:touch] sm:flex-wrap">
         <button
           type="button"
           onClick={() => setActiveTab("portal")}
@@ -75,7 +75,7 @@ export function OrdersPortalHub({
           )}
         >
           <ShoppingCart className="h-3.5 w-3.5" />
-          B2B Ordering & Credit Workbench
+          B2B Ordering<span className="hidden sm:inline"> &amp; Credit Workbench</span>
         </button>
         <button
           type="button"
@@ -88,7 +88,7 @@ export function OrdersPortalHub({
           )}
         >
           <ShoppingBag className="h-3.5 w-3.5" />
-          Order Book & Batch Allocations
+          Order Book<span className="hidden sm:inline"> &amp; Batch Allocations</span>
           <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-[10px]">
             {orders.length}
           </span>
@@ -104,7 +104,7 @@ export function OrdersPortalHub({
           )}
         >
           <StoreIcon className="h-3.5 w-3.5" />
-          Franchise Stores & Consumption
+          Franchise Stores<span className="hidden sm:inline"> &amp; Consumption</span>
           <span className="rounded-full bg-black/10 px-1.5 py-0.5 text-[10px]">
             {storeSummary.stores.length}
           </span>

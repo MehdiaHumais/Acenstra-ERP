@@ -1335,7 +1335,7 @@ export function AdminDashboard() {
       )}
 
       {/* ------------------------------------------------ KPI strip (compact) */}
-      <div className="grid grid-cols-3 gap-2 md:grid-cols-5">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 md:grid-cols-5">
         <StatTile label="Users" value={stats.total} tone="neutral" />
         <StatTile label="Active" value={stats.active} tone="ok" />
         <StatTile label="Deactivated" value={stats.deactivated} tone="warning" />
@@ -1396,9 +1396,9 @@ export function AdminDashboard() {
       {/* --------------------------------------------- USERS TAB (compact table) */}
       {tab === "users" && (
         <Surface className="overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-            <div className="relative min-w-[180px] flex-1">
-              <Search className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2">
+            <div className="relative w-full min-w-0 sm:min-w-[180px] sm:flex-1">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -1406,18 +1406,18 @@ export function AdminDashboard() {
                 className="h-8 w-full rounded-lg border border-input bg-background pl-7 pr-2 text-xs outline-none"
               />
             </div>
-            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="h-8 rounded-lg border border-input bg-background px-2 text-xs">
+            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2 text-xs sm:w-auto">
               <option value="">All roles</option>
               {roleOptions.custom.map((r) => <option key={r.code} value={r.code}>{r.name}</option>)}
               {roleOptions.system.map((r) => <option key={r.code} value={r.code}>{r.name}</option>)}
             </select>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} className="h-8 rounded-lg border border-input bg-background px-2 text-xs">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)} className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2 text-xs sm:w-auto">
               <option value="">Any status</option>
               <option value="active">Active</option>
               <option value="deactivated">Deactivated</option>
               <option value="locked">Locked</option>
             </select>
-            <button type="button" onClick={refreshAll} className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground" title="Refresh">
+            <button type="button" onClick={refreshAll} className="min-h-11 min-w-11 shrink-0 rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0" title="Refresh">
               <Loader2 className={cn("h-4 w-4", loadingUsers && "animate-spin")} />
             </button>
           </div>
@@ -1532,9 +1532,9 @@ export function AdminDashboard() {
       {/* ----------------------------------------- INVITATIONS TAB (compact table) */}
       {tab === "invitations" && (
         <Surface className="overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-            <div className="relative min-w-[180px] flex-1">
-              <Search className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2">
+            <div className="relative w-full min-w-0 sm:min-w-[180px] sm:flex-1">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={inviteSearch}
                 onChange={(e) => setInviteSearch(e.target.value)}
@@ -1542,7 +1542,7 @@ export function AdminDashboard() {
                 className="h-8 w-full rounded-lg border border-input bg-background pl-7 pr-2 text-xs outline-none"
               />
             </div>
-            <select value={inviteStatus} onChange={(e) => setInviteStatus(e.target.value as typeof inviteStatus)} className="h-8 rounded-lg border border-input bg-background px-2 text-xs">
+            <select value={inviteStatus} onChange={(e) => setInviteStatus(e.target.value as typeof inviteStatus)} className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2 text-xs sm:w-auto">
               <option value="">All statuses</option>
               <option value="pending">Pending</option>
               <option value="expired">Expired</option>
@@ -1550,11 +1550,11 @@ export function AdminDashboard() {
               <option value="accepted">Accepted</option>
             </select>
             <Can permission="users.manage" mode="disable">
-              <button type="button" onClick={() => setInviteOpen(true)} className="btn btn-primary btn-sm gap-1">
+              <button type="button" onClick={() => setInviteOpen(true)} className="btn btn-primary btn-sm w-full justify-center gap-1 sm:w-auto">
                 <UserPlus className="h-3.5 w-3.5" /> New
               </button>
             </Can>
-            <button type="button" onClick={() => void loadInvitations()} className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground" title="Refresh">
+            <button type="button" onClick={() => void loadInvitations()} className="min-h-11 min-w-11 shrink-0 rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0" title="Refresh">
               <Loader2 className={cn("h-4 w-4", loadingInvites && "animate-spin")} />
             </button>
           </div>
@@ -1845,9 +1845,9 @@ export function AdminDashboard() {
       {/* ------------------------------------------ MESSAGES TAB (contact requests) */}
       {tab === "messages" && (
         <Surface className="overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-            <div className="relative min-w-[180px] flex-1">
-              <Search className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2">
+            <div className="relative w-full min-w-0 sm:min-w-[180px] sm:flex-1">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={messageSearch}
                 onChange={(e) => setMessageSearch(e.target.value)}
@@ -1855,24 +1855,24 @@ export function AdminDashboard() {
                 className="h-8 w-full rounded-lg border border-input bg-background pl-7 pr-2 text-xs outline-none"
               />
             </div>
-            <div className="flex items-center gap-1.5">
-              <select value={messageDirection} onChange={(e) => setMessageDirection(e.target.value as typeof messageDirection)} className="h-8 rounded-lg border border-input bg-background px-2 text-xs">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 sm:w-auto">
+              <select value={messageDirection} onChange={(e) => setMessageDirection(e.target.value as typeof messageDirection)} className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2 text-xs sm:w-auto">
                 <option value="">All directions</option>
                 <option value="to_admin">From users</option>
                 <option value="to_user">To users</option>
               </select>
-              <select value={messageStatus} onChange={(e) => setMessageStatus(e.target.value as typeof messageStatus)} className="h-8 rounded-lg border border-input bg-background px-2 text-xs">
+              <select value={messageStatus} onChange={(e) => setMessageStatus(e.target.value as typeof messageStatus)} className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2 text-xs sm:w-auto">
                 <option value="new">New ({messageCounts.new})</option>
                 <option value="read">Read ({messageCounts.read})</option>
                 <option value="replied">Answered ({messageCounts.replied})</option>
                 <option value="">All ({messageCounts.total})</option>
               </select>
             </div>
-            <button type="button" onClick={() => void loadMessages()} className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground" title="Refresh">
+            <button type="button" onClick={() => void loadMessages()} className="min-h-11 min-w-11 shrink-0 rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0" title="Refresh">
               <Loader2 className={cn("h-4 w-4", loadingMessages && "animate-spin")} />
             </button>
             <Can permission="users.manage" mode="hide">
-              <button type="button" onClick={openComposePicker} className="btn btn-primary btn-sm gap-1.5 whitespace-nowrap">
+              <button type="button" onClick={openComposePicker} className="btn btn-primary btn-sm w-full justify-center gap-1.5 sm:w-auto sm:whitespace-nowrap">
                 <MessageSquare className="h-3.5 w-3.5" /> New message
               </button>
             </Can>
@@ -1958,9 +1958,9 @@ export function AdminDashboard() {
       {/* ------------------------------------------ REQUESTS TAB (public access requests) */}
       {tab === "requests" && (
         <Surface className="overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-            <div className="relative min-w-[180px] flex-1">
-              <Search className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2">
+            <div className="relative w-full min-w-0 sm:min-w-[180px] sm:flex-1">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={requestSearch}
                 onChange={(e) => setRequestSearch(e.target.value)}
@@ -1968,14 +1968,14 @@ export function AdminDashboard() {
                 className="h-8 w-full rounded-lg border border-input bg-background pl-7 pr-2 text-xs outline-none"
               />
             </div>
-            <select value={requestsStatus} onChange={(e) => setRequestsStatus(e.target.value as typeof requestsStatus)} className="h-8 rounded-lg border border-input bg-background px-2 text-xs">
+            <select value={requestsStatus} onChange={(e) => setRequestsStatus(e.target.value as typeof requestsStatus)} className="h-8 w-full min-w-0 rounded-lg border border-input bg-background px-2 text-xs sm:w-auto">
               <option value="pending">Pending ({requestCounts.pending})</option>
               <option value="additional_info">Info requested ({requestCounts.additional_info})</option>
               <option value="approved">Approved ({requestCounts.approved})</option>
               <option value="rejected">Rejected ({requestCounts.rejected})</option>
               <option value="">All statuses ({requestCounts.total})</option>
             </select>
-            <button type="button" onClick={() => void loadRequests()} className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground" title="Refresh">
+            <button type="button" onClick={() => void loadRequests()} className="min-h-11 min-w-11 shrink-0 rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0" title="Refresh">
               <Loader2 className={cn("h-4 w-4", loadingRequests && "animate-spin")} />
             </button>
           </div>
@@ -2066,9 +2066,9 @@ export function AdminDashboard() {
       {/* ------------------------------------------ ACCESS TAB (role → access matrix) */}
       {tab === "access" && (
         <Surface className="overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-            <div className="relative min-w-[180px] flex-1">
-              <Search className="pointer-events-none absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2">
+            <div className="relative w-full min-w-0 sm:min-w-[180px] sm:flex-1">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={accessSearch}
                 onChange={(e) => setAccessSearch(e.target.value)}
@@ -2076,7 +2076,7 @@ export function AdminDashboard() {
                 className="h-8 w-full rounded-lg border border-input bg-background pl-7 pr-2 text-xs outline-none"
               />
             </div>
-            <button type="button" onClick={loadRoles} className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground" title="Refresh">
+            <button type="button" onClick={loadRoles} className="min-h-11 min-w-11 shrink-0 rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0" title="Refresh">
               <Loader2 className="h-4 w-4" />
             </button>
           </div>
@@ -2344,8 +2344,8 @@ export function AdminDashboard() {
 
       {/* ------------------------------------------ ACCOUNT CREATED (temp password) */}
       {approvedAccount && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4" role="presentation">
-          <div role="dialog" aria-modal="true" aria-labelledby="account-created-title" className="w-full max-w-lg rounded-2xl border border-emerald-200 bg-card p-6 text-center shadow-2xl">
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" role="presentation">
+          <div role="dialog" aria-modal="true" aria-labelledby="account-created-title" className="max-h-[calc(100dvh-1rem)] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-emerald-200 bg-card p-4 text-center shadow-2xl sm:rounded-2xl sm:p-6">
             <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
               <CheckCircle2 className="h-8 w-8 text-emerald-600" />
             </span>
@@ -2559,8 +2559,8 @@ export function AdminDashboard() {
 
       {/* ------------------------------------------ DELETE USER MODAL */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" role="presentation" onClick={() => { setDeleteTarget(null); setDeleteConfirmText(""); }}>
-          <div role="dialog" aria-modal="true" aria-labelledby="delete-title" className="w-full max-w-md rounded-2xl border border-border bg-card p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="presentation" onClick={() => { setDeleteTarget(null); setDeleteConfirmText(""); }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="delete-title" className="max-h-[calc(100dvh-1rem)] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-card p-4 shadow-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 id="delete-title" className="text-base font-bold text-foreground">Delete {deleteTarget.name}?</h2>
             <p className="mt-1 text-[11px] text-muted-foreground">
               {deleteTarget.email} — permanently deletes the account and frees this email address. The action is audited. Use Deactivate instead if the person may return.

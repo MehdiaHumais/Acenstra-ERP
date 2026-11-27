@@ -248,20 +248,26 @@ export function DeliveryBoard({ deliveries }: { deliveries: Delivery[] }) {
       )}
 
       {exceptionFor && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={submitException} className="w-full max-w-md rounded-xl border border-border bg-card shadow-xl">
-            <div className="flex items-start justify-between border-b border-border px-5 py-4">
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+          <form
+            onSubmit={submitException}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delivery-exception-title"
+            className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl sm:max-w-md sm:rounded-xl"
+          >
+            <div className="flex items-start justify-between border-b border-border px-4 pb-4 pt-4 sm:px-5 sm:pt-5">
               <div>
-                <h2 className="text-sm font-semibold">Record delivery exception</h2>
+                <h2 id="delivery-exception-title" className="text-sm font-semibold">Record delivery exception</h2>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
                   {exceptionFor.number} · {exceptionFor.customer_name}
                 </p>
               </div>
-              <button type="button" aria-label="Close" className="btn btn-ghost btn-sm" onClick={() => setExceptionFor(null)}>
+              <button type="button" aria-label="Close" className="btn btn-ghost btn-sm min-h-11 min-w-11 justify-center sm:min-h-0 sm:min-w-0" onClick={() => setExceptionFor(null)}>
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="px-5 py-4">
+            <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
               <label className="block">
                 <span className="field-label">Reason code</span>
                 <select value={reason} onChange={(event) => setReason(event.target.value)} className="mt-1 h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none">
@@ -277,12 +283,12 @@ export function DeliveryBoard({ deliveries }: { deliveries: Delivery[] }) {
                 would be attached by the driver app in production.
               </p>
             </div>
-            <div className="flex justify-end gap-2 border-t border-border px-5 py-3">
-              <button type="button" className="btn btn-secondary" onClick={() => setExceptionFor(null)}>
+            <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-border bg-card px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-5 sm:pb-3">
+              <button type="button" className="btn btn-secondary min-h-11 sm:min-h-0" onClick={() => setExceptionFor(null)}>
                 Cancel
               </button>
               <Can permission="deliveries:update" mode="disable">
-                <button type="submit" className="btn btn-danger">
+                <button type="submit" className="btn btn-danger min-h-11 sm:min-h-0">
                   Record exception
                 </button>
               </Can>

@@ -18,13 +18,16 @@ export async function POST(req: NextRequest) {
     const actor = authorizeRequest(req, "products:read");
     const body = await parseJsonBody<{
       barcode: string;
+      format?: string;
       operation?: string;
       reference_id?: string;
       quantity?: number;
       result?: string;
     }>(req);
 
-    const lookup = lookupBarcode(actor, body.barcode);
+    // `operation` is intentionally omitted by the Add Product photo flow: a
+    // pure catalogue lookup only requires products:read, not scan permissions.
+    const lookup = lookupBarcode(actor, body.barcode, body.format);
 
     if (body.operation) {
       recordScanEvent(actor, {

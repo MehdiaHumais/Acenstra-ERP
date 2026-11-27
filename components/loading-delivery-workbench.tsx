@@ -49,6 +49,17 @@ export function LoadingDeliveryWorkbench() {
   const [inspectionModalOpen, setInspectionModalOpen] = useState(false);
   const [tempModalOpen, setTempModalOpen] = useState(false);
   const [exceptionModalOpen, setExceptionModalOpen] = useState(false);
+  const [dispatchConfirmOpen, setDispatchConfirmOpen] = useState(false);
+  const [toast, setToast] = useState<{
+    text: string;
+    tone: "ok" | "error" | "warning";
+  } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   // Form states
   const [planOrders, setPlanOrders] = useState("SO-2026-9841");
@@ -138,7 +149,7 @@ export function LoadingDeliveryWorkbench() {
       loadData();
       if (data.delivery) setSelectedDeliveryId(data.delivery.id);
     } catch (err: any) {
-      alert(err.message);
+      setToast({ text: err.message, tone: "error" });
     }
   }
 
@@ -159,7 +170,7 @@ export function LoadingDeliveryWorkbench() {
       setAssignModalOpen(false);
       loadData();
     } catch (err: any) {
-      alert(err.message);
+      setToast({ text: err.message, tone: "error" });
     }
   }
 
@@ -188,9 +199,12 @@ export function LoadingDeliveryWorkbench() {
       if (!res.ok) throw new Error(data.error?.message || "Failed to submit inspection");
       setInspectionModalOpen(false);
       loadData();
-      alert(`Pre-loading inspection recorded: ${data.inspection.status.toUpperCase()}`);
+      setToast({
+        text: `Pre-loading inspection recorded: ${data.inspection.status.toUpperCase()}`,
+        tone: "ok",
+      });
     } catch (err: any) {
-      alert(err.message);
+      setToast({ text: err.message, tone: "error" });
     }
   }
 
@@ -219,9 +233,14 @@ export function LoadingDeliveryWorkbench() {
     }
   }
 
-  async function handleDispatchDelivery() {
+  function handleDispatchDelivery() {
     if (!selectedDelivery) return;
-    if (!confirm(`Dispatch delivery ${selectedDelivery.id} on route ${selectedDelivery.route_code}?`)) return;
+    setDispatchConfirmOpen(true);
+  }
+
+  async function confirmDispatchDelivery() {
+    if (!selectedDelivery) return;
+    setDispatchConfirmOpen(false);
     try {
       const res = await fetch(`/api/v1/deliveries/${selectedDelivery.id}/dispatch`, {
         method: "POST",
@@ -231,9 +250,12 @@ export function LoadingDeliveryWorkbench() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || "Failed to dispatch delivery");
       loadData();
-      alert(`Delivery ${selectedDelivery.id} dispatched! Driver status updated to on_route.`);
+      setToast({
+        text: `Delivery ${selectedDelivery.id} dispatched! Driver status updated to on_route.`,
+        tone: "ok",
+      });
     } catch (err: any) {
-      alert(err.message);
+      setToast({ text: err.message, tone: "error" });
     }
   }
 
@@ -255,12 +277,15 @@ export function LoadingDeliveryWorkbench() {
       setTempModalOpen(false);
       loadData();
       if (data.log.is_excursion) {
-        alert(`WARNING: Cold chain excursion detected (${data.log.actual_temp_c}°C)! Hold applied.`);
+        setToast({
+          text: `WARNING: Cold chain excursion detected (${data.log.actual_temp_c}°C)! Hold applied.`,
+          tone: "warning",
+        });
       } else {
-        alert("Temperature recorded successfully.");
+        setToast({ text: "Temperature recorded successfully.", tone: "ok" });
       }
     } catch (err: any) {
-      alert(err.message);
+      setToast({ text: err.message, tone: "error" });
     }
   }
 
@@ -281,9 +306,12 @@ export function LoadingDeliveryWorkbench() {
       if (!res.ok) throw new Error(data.error?.message || "Failed to record exception");
       setExceptionModalOpen(false);
       loadData();
-      alert(`Delivery exception logged: ${data.exception.exception_type}`);
+      setToast({
+        text: `Delivery exception logged: ${data.exception.exception_type}`,
+        tone: "ok",
+      });
     } catch (err: any) {
-      alert(err.message);
+      setToast({ text: err.message, tone: "error" });
     }
   }
 
@@ -331,10 +359,10 @@ export function LoadingDeliveryWorkbench() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-border text-sm font-medium">
+      <div className="flex overflow-x-auto whitespace-nowrap border-b border-border text-sm font-medium [-webkit-overflow-scrolling:touch]">
         <button
           onClick={() => setActiveTab("deliveries")}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 transition-colors ${
+          className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 transition-colors ${
             activeTab === "deliveries"
               ? "border-primary text-primary font-semibold"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -344,7 +372,7 @@ export function LoadingDeliveryWorkbench() {
         </button>
         <button
           onClick={() => setActiveTab("fleet")}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 transition-colors ${
+          className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 transition-colors ${
             activeTab === "fleet"
               ? "border-primary text-primary font-semibold"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -354,7 +382,7 @@ export function LoadingDeliveryWorkbench() {
         </button>
         <button
           onClick={() => setActiveTab("manifest")}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 transition-colors ${
+          className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 transition-colors ${
             activeTab === "manifest"
               ? "border-primary text-primary font-semibold"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -364,7 +392,7 @@ export function LoadingDeliveryWorkbench() {
         </button>
         <button
           onClick={() => setActiveTab("temperature")}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 transition-colors ${
+          className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 transition-colors ${
             activeTab === "temperature"
               ? "border-primary text-primary font-semibold"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -374,7 +402,7 @@ export function LoadingDeliveryWorkbench() {
         </button>
         <button
           onClick={() => setActiveTab("pod")}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 transition-colors ${
+          className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 transition-colors ${
             activeTab === "pod"
               ? "border-primary text-primary font-semibold"
               : "border-transparent text-muted-foreground hover:text-foreground"
@@ -712,7 +740,7 @@ export function LoadingDeliveryWorkbench() {
               {/* Barcode Scanner Input */}
               <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex-1 min-w-[240px]">
+                  <div className="w-full min-w-0 sm:w-auto sm:min-w-[240px] sm:flex-1">
                     <label className="text-xs font-semibold">Scan Barcode / SSCC-18 / SKU</label>
                     <div className="mt-1 flex gap-2">
                       <input
@@ -735,7 +763,7 @@ export function LoadingDeliveryWorkbench() {
                       </Can>
                     </div>
                   </div>
-                  <div className="w-48">
+                  <div className="w-full sm:w-48">
                     <label className="text-xs font-semibold">Target Compartment</label>
                     <select
                       value={scanCompartment}
@@ -986,13 +1014,24 @@ export function LoadingDeliveryWorkbench() {
 
       {/* Plan Delivery Modal */}
       {planModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto border border-border">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-base font-bold">Generate New Delivery Plan</h3>
-              <button onClick={() => setPlanModalOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="plan-modal-title"
+            className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl sm:p-6"
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 pb-3 pt-4 sm:px-0 sm:pt-0">
+              <h3 id="plan-modal-title" className="text-base font-bold">Generate New Delivery Plan</h3>
+              <button
+                onClick={() => setPlanModalOpen(false)}
+                aria-label="Close"
+                className="flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0"
+              >
+                ✕
+              </button>
             </div>
-            <div className="space-y-4 text-xs">
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4 text-xs sm:px-0 sm:pb-0">
               <div>
                 <label className="font-semibold">Packed Order IDs (comma separated)</label>
                 <input
@@ -1045,11 +1084,11 @@ export function LoadingDeliveryWorkbench() {
                   </select>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-border bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setPlanModalOpen(false)}
-                  className="rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                  className="min-h-11 rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted sm:min-h-0"
                 >
                   Cancel
                 </button>
@@ -1057,7 +1096,7 @@ export function LoadingDeliveryWorkbench() {
                   <button
                     type="button"
                     onClick={handlePlanDelivery}
-                    className="rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                    className="min-h-11 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:min-h-0"
                   >
                     Create Plan
                   </button>
@@ -1070,13 +1109,24 @@ export function LoadingDeliveryWorkbench() {
 
       {/* Assign Vehicle & Driver Modal */}
       {assignModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto border border-border">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-base font-bold">Assign Vehicle & Driver</h3>
-              <button onClick={() => setAssignModalOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="assign-modal-title"
+            className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl sm:p-6"
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 pb-3 pt-4 sm:px-0 sm:pt-0">
+              <h3 id="assign-modal-title" className="text-base font-bold">Assign Vehicle & Driver</h3>
+              <button
+                onClick={() => setAssignModalOpen(false)}
+                aria-label="Close"
+                className="flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0"
+              >
+                ✕
+              </button>
             </div>
-            <div className="space-y-4 text-xs">
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4 text-xs sm:px-0 sm:pb-0">
               <div>
                 <label className="font-semibold">Select Vehicle</label>
                 <select
@@ -1107,11 +1157,11 @@ export function LoadingDeliveryWorkbench() {
                   ))}
                 </select>
               </div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-border bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setAssignModalOpen(false)}
-                  className="rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                  className="min-h-11 rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted sm:min-h-0"
                 >
                   Cancel
                 </button>
@@ -1119,7 +1169,7 @@ export function LoadingDeliveryWorkbench() {
                   <button
                     type="button"
                     onClick={handleAssignVehicleDriver}
-                    className="rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                    className="min-h-11 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:min-h-0"
                   >
                     Confirm Assignment
                   </button>
@@ -1132,13 +1182,24 @@ export function LoadingDeliveryWorkbench() {
 
       {/* Pre-Loading Inspection Modal */}
       {inspectionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto border border-border">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-base font-bold">Pre-Loading Vehicle Safety Inspection</h3>
-              <button onClick={() => setInspectionModalOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inspection-modal-title"
+            className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl sm:p-6"
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 pb-3 pt-4 sm:px-0 sm:pt-0">
+              <h3 id="inspection-modal-title" className="text-base font-bold">Pre-Loading Vehicle Safety Inspection</h3>
+              <button
+                onClick={() => setInspectionModalOpen(false)}
+                aria-label="Close"
+                className="flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0"
+              >
+                ✕
+              </button>
             </div>
-            <div className="space-y-3.5 text-xs">
+            <div className="flex-1 space-y-3.5 overflow-y-auto px-4 pb-4 text-xs sm:px-0 sm:pb-0">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-semibold">Vehicle</label>
@@ -1220,11 +1281,11 @@ export function LoadingDeliveryWorkbench() {
                 </label>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-border bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setInspectionModalOpen(false)}
-                  className="rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                  className="min-h-11 rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted sm:min-h-0"
                 >
                   Cancel
                 </button>
@@ -1232,7 +1293,7 @@ export function LoadingDeliveryWorkbench() {
                   <button
                     type="button"
                     onClick={handleSubmitInspection}
-                    className="rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                    className="min-h-11 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:min-h-0"
                   >
                     Submit Inspection
                   </button>
@@ -1245,13 +1306,24 @@ export function LoadingDeliveryWorkbench() {
 
       {/* Temperature Modal */}
       {tempModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto border border-border">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-base font-bold">Log Transport Temperature</h3>
-              <button onClick={() => setTempModalOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="temp-modal-title"
+            className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl sm:p-6"
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 pb-3 pt-4 sm:px-0 sm:pt-0">
+              <h3 id="temp-modal-title" className="text-base font-bold">Log Transport Temperature</h3>
+              <button
+                onClick={() => setTempModalOpen(false)}
+                aria-label="Close"
+                className="flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0"
+              >
+                ✕
+              </button>
             </div>
-            <div className="space-y-4 text-xs">
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4 text-xs sm:px-0 sm:pb-0">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-semibold">Compartment</label>
@@ -1300,11 +1372,11 @@ export function LoadingDeliveryWorkbench() {
                   className="mt-1 w-full rounded-md border border-border bg-background p-2 text-xs"
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-border bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setTempModalOpen(false)}
-                  className="rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                  className="min-h-11 rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted sm:min-h-0"
                 >
                   Cancel
                 </button>
@@ -1312,7 +1384,7 @@ export function LoadingDeliveryWorkbench() {
                   <button
                     type="button"
                     onClick={handleRecordTemp}
-                    className="rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                    className="min-h-11 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:min-h-0"
                   >
                     Record Reading
                   </button>
@@ -1325,13 +1397,24 @@ export function LoadingDeliveryWorkbench() {
 
       {/* Exception Modal */}
       {exceptionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl bg-card p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto border border-border">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-base font-bold">Record Delivery Exception</h3>
-              <button onClick={() => setExceptionModalOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="exception-modal-title"
+            className="flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-xl sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl sm:p-6"
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 pb-3 pt-4 sm:px-0 sm:pt-0">
+              <h3 id="exception-modal-title" className="text-base font-bold">Record Delivery Exception</h3>
+              <button
+                onClick={() => setExceptionModalOpen(false)}
+                aria-label="Close"
+                className="flex min-h-11 min-w-11 items-center justify-center text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0"
+              >
+                ✕
+              </button>
             </div>
-            <div className="space-y-4 text-xs">
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4 text-xs sm:px-0 sm:pb-0">
               <div>
                 <label className="font-semibold">Exception Type</label>
                 <select
@@ -1383,11 +1466,11 @@ export function LoadingDeliveryWorkbench() {
                   </select>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t border-border bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:pb-0">
                 <button
                   type="button"
                   onClick={() => setExceptionModalOpen(false)}
-                  className="rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted"
+                  className="min-h-11 rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted sm:min-h-0"
                 >
                   Cancel
                 </button>
@@ -1395,7 +1478,7 @@ export function LoadingDeliveryWorkbench() {
                   <button
                     type="button"
                     onClick={handleRecordException}
-                    className="rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                    className="min-h-11 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:min-h-0"
                   >
                     Submit Exception
                   </button>
@@ -1403,6 +1486,55 @@ export function LoadingDeliveryWorkbench() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {dispatchConfirmOpen && selectedDelivery && (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm delivery dispatch"
+            className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-border bg-card p-4 shadow-xl sm:rounded-xl sm:p-5"
+          >
+            <h3 className="text-sm font-bold">Dispatch delivery?</h3>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Dispatch {selectedDelivery.id} on route {selectedDelivery.route_code}? The driver status will be
+              updated to on_route.
+            </p>
+            <div className="sticky bottom-0 mt-4 flex flex-col gap-2 border-t border-border bg-card pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:flex-row sm:justify-end sm:pb-0">
+              <button
+                type="button"
+                onClick={() => setDispatchConfirmOpen(false)}
+                className="min-h-11 w-full rounded border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted sm:min-h-0 sm:w-auto"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDispatchDelivery}
+                className="min-h-11 w-full rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:min-h-0 sm:w-auto"
+              >
+                Dispatch now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 right-4 z-[80] rounded-lg border px-4 py-3 text-xs font-medium shadow-lg sm:bottom-5 sm:left-auto sm:right-5 sm:max-w-sm ${
+            toast.tone === "error"
+              ? "border-red-500/40 bg-red-50 text-red-700"
+              : toast.tone === "warning"
+                ? "border-amber-500/40 bg-amber-50 text-amber-800"
+                : "border-marine-ocean/60 bg-card text-foreground"
+          }`}
+        >
+          {toast.text}
         </div>
       )}
     </div>

@@ -9,7 +9,7 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "barcode-test-"));
 process.env.SQLITE_DB_PATH = path.join(tmpDir, "barcode.sqlite");
 process.env.SEED_DEMO_DATA = "true";
 
-import { getDb } from "@/server/db/connection";
+import { getDb, withTransaction } from "@/server/db/connection";
 import {
   listProductBarcodes,
   lookupBarcode,
@@ -19,6 +19,7 @@ import {
   generateInternalBarcode
 } from "@/server/services/product-barcode.service";
 import { getEffectiveAuthorization } from "@/server/security/auth";
+import { createProduct } from "@/server/services/product-master.service";
 
 const superAdminActor = {
   id: "USR-ADMIN-BC",
@@ -111,11 +112,11 @@ describe("Product barcodes — format-aware checksums", () => {
     );
   });
 
-  it("validates UPC-A 12-digit codes with 1/3 weights", () => {
-    const ok = lookupBarcode(superAdminActor as any, "036000291458"); // valid UPC-A
+  it("validates UPC-A 12-digit codes with 3/1 weights", () => {
+    const ok = lookupBarcode(superAdminActor as any, "036000291452"); // valid UPC-A (check digit 2)
     assert.equal(ok.found, false);
     assert.throws(
-      () => lookupBarcode(superAdminActor as any, "036000291459"), // bad UPC-A check digit
+      () => lookupBarcode(superAdminActor as any, "036000291453"), // bad UPC-A check digit
       /BARCODE_CHECKSUM_MISMATCH|checksum mismatch/i
     );
   });
@@ -266,5 +267,38 @@ describe("Product barcodes — scan events", () => {
     });
     assert.equal(second.id, first.id);
     assert.equal((second as any).deduplicated, true);
+  });
+});
+
+describe("Product barcodes — add product atomicity", () => {
+  it("rolls back a new product when its decoded barcode is already assigned", () => {
+    const sku = "SKU-BARCODE-ROLLBACK";
+    assert.throws(
+      () =>
+        withTransaction(() => {
+          const created = createProduct(superAdminActor as any, {
+            sku,
+            name: "Barcode rollback probe",
+            category: "Pantry",
+          });
+          addBarcodeForProduct(superAdminActor as any, {
+            product_sku: created.sku,
+            barcode: "8056593285012",
+            format: "EAN-13",
+            is_primary: true,
+          });
+        }),
+      /already assigned/i,
+    );
+    const row = getDb()
+      .prepare("SELECT id FROM products WHERE sku = ?")
+      .get(sku);
+    assert.equal(row, undefined);
+  });
+
+  it("accepts a decoded UPC-E barcode with its detected format", () => {
+    const result = lookupBarcode(superAdminActor as any, "01234565", "UPC_E");
+    assert.equal(result.barcode, "01234565");
+    assert.equal(result.found, false);
   });
 });

@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node scripts/copy-db-runtime.cjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/auth-rbac-mfa.test.ts tests/inbound-receiving.test.ts tests/putaway.test.ts tests/quality-gate.test.ts tests/security-hardening.test.ts tests/stock-intelligence.test.ts tests/customer-order.test.ts tests/customer-order-workflow.test.ts tests/rbac-access-control.test.ts tests/barcode-auth.test.ts tests/product-barcode.test.ts tests/user-onboarding.test.ts tests/external-barcode.test.ts tests/access-request.test.ts tests/notifications-contact.test.ts",
+    "test": "node --import tsx --test tests/auth-rbac-mfa.test.ts tests/inbound-receiving.test.ts tests/putaway.test.ts tests/quality-gate.test.ts tests/security-hardening.test.ts tests/stock-intelligence.test.ts tests/customer-order.test.ts tests/customer-order-workflow.test.ts tests/rbac-access-control.test.ts tests/barcode-auth.test.ts tests/product-barcode.test.ts tests/barcode-photo.test.ts tests/user-onboarding.test.ts tests/external-barcode.test.ts tests/access-request.test.ts tests/notifications-contact.test.ts tests/sql-translate.test.ts",
     "test:e2e": "node --test tests/backend-e2e.test.mjs",
     "verify": "npm run typecheck && npm run test && npm run build",
+    "db:migrate:postgres": "tsx scripts/migrate-sqlite-to-postgres.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed"
@@ -24,11 +26,13 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "@supabase/auth-helpers-nextjs": "^0.15.0",
+    "@types/pg": "^8.23.1",
     "@zxing/library": "^0.23.0",
     "jsqr": "1.4.0",
     "lucide-react": "0.468.0",
     "next": "^14.2.35",
     "nodemailer": "^10.6.0",
+    "pg": "^8.23.1",
     "qrcode": "1.5.4",
     "react": "18.3.1",
     "react-dom": "18.3.1"

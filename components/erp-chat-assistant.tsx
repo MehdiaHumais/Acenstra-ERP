@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Bot,
   Send,
@@ -42,6 +43,7 @@ const QUICK_PROMPTS = [
 ];
 
 export function ErpChatAssistant() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -83,6 +85,18 @@ export function ErpChatAssistant() {
     window.addEventListener("ascentra:open-ai", handler);
     return () => window.removeEventListener("ascentra:open-ai", handler);
   }, []);
+
+  // A phone assistant sheet must not survive a route change or swallow Escape.
+  useEffect(() => setIsOpen(false), [pathname]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -253,7 +267,7 @@ export function ErpChatAssistant() {
     <>
       {/* CHATBOT DRAWER / WINDOW */}
       {isOpen && (
-        <div className="fixed bottom-4 right-4 z-50 flex h-[600px] max-h-[calc(100vh-2rem)] w-[430px] max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-border bg-card shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200">
+        <div className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] right-2 z-50 flex h-[calc(100dvh-1rem-env(safe-area-inset-bottom))] w-[calc(100vw-1rem)] max-w-[430px] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl animate-in fade-in slide-in-from-bottom-5 duration-200 sm:bottom-4 sm:right-4 sm:h-[600px] sm:max-h-[calc(100dvh-2rem)] sm:w-[430px] sm:max-w-[calc(100vw-2rem)]">
           {/* HEADER */}
           <div className="flex items-center justify-between border-b border-border bg-gradient-to-r from-[#061222] to-[#1B3A52] px-4 py-3 text-white">
             <div className="flex items-center gap-2.5">
@@ -263,7 +277,7 @@ export function ErpChatAssistant() {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-xs font-bold tracking-tight">Ascentra AI Assistant</h3>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-marine-steelLight/40 bg-marine-steel/30 px-2 py-0.5 text-[9px] font-semibold text-marine-ice">
+                  <span className="hidden items-center gap-1 rounded-full border border-marine-steelLight/40 bg-marine-steel/30 px-2 py-0.5 text-[9px] font-semibold text-marine-ice sm:inline-flex">
                     <span className="h-1.5 w-1.5 rounded-full bg-marine-steelLight animate-pulse" /> Live Grounded
                   </span>
                 </div>
@@ -278,7 +292,7 @@ export function ErpChatAssistant() {
                 type="button"
                 onClick={clearChat}
                 title="Clear conversation"
-                className="rounded-md p-1.5 text-white/70 hover:bg-marine-mid/10 hover:text-white transition-colors"
+                className="rounded-md p-2 text-white/70 hover:bg-marine-mid/10 hover:text-white transition-colors sm:p-1.5"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
@@ -286,7 +300,7 @@ export function ErpChatAssistant() {
                 type="button"
                 onClick={() => setIsOpen(false)}
                 title="Close chat"
-                className="rounded-md p-1.5 text-white/70 hover:bg-marine-mid/10 hover:text-white transition-colors"
+                className="rounded-md p-2 text-white/70 hover:bg-marine-mid/10 hover:text-white transition-colors sm:p-1.5"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -295,7 +309,7 @@ export function ErpChatAssistant() {
 
           {/* LIVE SYSTEM DATA COUNTERS STRIP */}
           {liveStats && (
-            <div className="flex items-center justify-between border-b border-border bg-muted/40 px-3.5 py-1.5 text-[11px] text-muted-foreground">
+            <div className="scrollbar-thin flex items-center gap-3 overflow-x-auto whitespace-nowrap border-b border-border bg-muted/40 px-3.5 py-1.5 text-[11px] text-muted-foreground sm:justify-between sm:gap-0">
               <span className="flex items-center gap-1 font-medium">
                 <Users className="h-3 w-3 text-primary" /> {liveStats.totalCustomers} Customers
               </span>

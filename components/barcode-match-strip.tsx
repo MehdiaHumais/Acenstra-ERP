@@ -101,23 +101,25 @@ export function BarcodeMatchStrip({
       <div className="flex items-center gap-2">
         {icon}
         <span className="font-semibold">Barcode</span>
-        <input
-          disabled={disabled}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder="Scan barcode…"
-          className="ml-auto w-44 rounded border border-border bg-background px-2 py-1 font-mono text-[11px] tracking-wider outline-none focus:ring-1 focus:ring-primary"
-          aria-label="Product barcode"
-        />
-        <button
-          type="button"
-          disabled={disabled || !value.trim()}
-          onClick={verify}
-          className="rounded-md border border-border bg-background px-2 py-1 text-[10px] font-semibold disabled:opacity-40"
-        >
-          Verify
-        </button>
+        <div className="mt-1 flex w-full flex-col gap-2 sm:ml-auto sm:mt-0 sm:w-auto sm:flex-row sm:items-center">
+          <input
+            disabled={disabled}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Scan barcode…"
+            className="min-h-11 w-full rounded border border-border bg-background px-2 font-mono text-[11px] tracking-wider outline-none focus:ring-1 focus:ring-primary sm:w-44"
+            aria-label="Product barcode"
+          />
+          <button
+            type="button"
+            disabled={disabled || !value.trim()}
+            onClick={verify}
+            className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-xs font-semibold disabled:opacity-40 sm:w-auto sm:px-2 sm:text-[10px]"
+          >
+            Verify
+          </button>
+        </div>
       </div>
       <p className="mt-1 leading-4">{note}</p>
       {status === "ok" && (

@@ -400,6 +400,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMobileOpen(false);
   }, [pathname]);
 
+  // Escape is the expected way to dismiss a full-screen phone drawer.
+  useEffect(() => {
+    if (!mobileOpen || isStandalone) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen, isStandalone]);
+
+  // A phone drawer covers the whole app; stop the page behind it from scrolling.
+  useEffect(() => {
+    if (isStandalone || !mobileOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [isStandalone, mobileOpen]);
+
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem("ascentra_locale");
@@ -485,8 +505,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="ERP navigation"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[272px] flex-col border-r border-white/10 bg-marine-navy text-marine-ice transition-transform duration-200 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-[60] flex w-[272px] max-w-[86vw] flex-col border-r border-white/10 bg-marine-navy text-marine-ice transition-transform duration-200 lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -506,7 +529,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             type="button"
             aria-label="Close navigation"
             onClick={() => setMobileOpen(false)}
-            className="rounded-md p-1.5 text-white/70 hover:bg-marine-mid/10 lg:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-md text-white/70 hover:bg-marine-mid/10 lg:hidden"
           >
             <X className="h-5 w-5" />
           </button>
@@ -530,8 +553,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <li key={item.href}>
                         <Link
                           href={item.href}
+                          onClick={() => setMobileOpen(false)}
                           className={cn(
-                            "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                            "group flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
                             active
                               ? "bg-marine-ocean/70 text-marine-ice shadow-sm"
                               : "text-marine-ice/70 hover:bg-marine-mid/[0.06] hover:text-marine-ice",
@@ -550,7 +574,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="shrink-0 border-t border-white/10 p-4">
+        <div className="shrink-0 border-t border-white/10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="rounded-lg border border-marine-ocean/70 bg-marine-ocean/25 p-3">
             <p className="flex items-center gap-2 text-xs font-semibold text-marine-ice">
               <span className="h-2 w-2 rounded-full bg-marine-steelLight" />
@@ -563,6 +587,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </p>
             <Link
               href="/management"
+              onClick={() => setMobileOpen(false)}
               className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-marine-steelLight hover:text-marine-ice"
             >
               {locale === "it" ? "Coda approvazioni" : "Review queue"} <ChevronRight className="h-3 w-3" />
@@ -579,23 +604,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           type="button"
           aria-label="Close navigation overlay"
           onClick={() => setMobileOpen(false)}
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-[55] bg-black/40 lg:hidden"
         />
       )}
 
       <div className="flex min-h-screen flex-col lg:pl-[272px]">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur md:px-6">
-          <div className="flex min-w-0 items-center gap-3">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-background px-3 sm:px-4 md:h-16 md:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <button
               type="button"
               aria-label="Open navigation"
               onClick={() => setMobileOpen(true)}
-              className="rounded-md border border-border bg-card p-2 text-muted-foreground hover:text-foreground lg:hidden"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground lg:hidden"
             >
               <Menu className="h-5 w-5" />
             </button>
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold tracking-tight sm:text-base">
+              <h1 className="truncate text-[13px] font-semibold tracking-tight sm:text-base">
                 {locale === "it" ? page.titleIt : page.title}
               </h1>
               <p className="hidden truncate text-xs text-muted-foreground sm:block">
@@ -607,7 +632,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <HeaderActions locale={locale} onToggleLocale={toggleLocale} />
         </header>
 
-        <main className="min-w-0 flex-1 px-4 py-6 md:px-6">
+        <main className="min-w-0 flex-1 px-3 py-4 sm:px-4 sm:py-5 md:px-6 md:py-6">
           <div className="mx-auto w-full max-w-[1320px]">
             {permissionsLoaded && accessDenied ? (
               <div className="mx-auto flex max-w-xl flex-col items-center rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-14 text-center">
@@ -635,7 +660,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </main>
 
-        <footer className="border-t border-border px-4 py-4 text-xs text-muted-foreground md:px-6">
+        <footer className="border-t border-border px-3 py-4 text-xs text-muted-foreground sm:px-4 md:px-6">
           <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <p>
               {locale === "it"

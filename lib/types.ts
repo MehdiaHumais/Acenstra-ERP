@@ -93,6 +93,8 @@ export interface Product {
   currency?: string;
   supplier_id?: string;
   supplier_sku?: string;
+  image_url?: string;
+  image_source?: string;
   certificate_count?: number;
   expiring_certificate_count?: number;
 }

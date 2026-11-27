@@ -11,13 +11,15 @@ export async function GET() {
   try {
     const db = getDb();
     const row = db.prepare(`SELECT COUNT(*) as c FROM products`).get() as { c: number };
+    const engineName = (process.env.DB_ENGINE || "sqlite").trim().toLowerCase();
+    const isPostgres = ["postgres", "postgresql", "supabase"].includes(engineName);
     return NextResponse.json({
       status: "ok",
       service: "Ascentra Food Distribution ERP API",
       version: "1.0.0",
       database: {
         status: "connected",
-        engine: "sqlite-wal/postgresql-compatible",
+        engine: isPostgres ? "supabase-postgres" : "sqlite-wal",
         active_skus: Number(row.c)
       },
       infrastructure: cacheQueue.stats(),

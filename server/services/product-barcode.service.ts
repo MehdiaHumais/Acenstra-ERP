@@ -73,6 +73,15 @@ function alternatingWeights(length: number): number[] {
   return weights;
 }
 
+/** UPC-A (and EAN-13 with a leading 0) weights odd positions by 3 and even
+ *  positions by 1. EAN-13's own 12-digit body uses the opposite convention,
+ *  so a separate helper is required. */
+function upcAWeights(length: number): number[] {
+  const weights = new Array<number>(length).fill(3);
+  for (let i = 1; i < weights.length; i += 2) weights[i] = 1;
+  return weights;
+}
+
 /** Normalise a format label to one of the supported canonical names. */
 function normalizeFormatName(format: unknown): string {
   const f = String(format ?? "")
@@ -93,7 +102,8 @@ function normalizeFormatName(format: unknown): string {
 
 /**
  * Check digit validation, applied ONLY to the formats that carry one.
- *   EAN-13 / UPC-A → alternating 1/3 weights (EAN-13 maths is the same family)
+ *   EAN-13          → alternating 1/3 weights from the left
+ *   UPC-A           → alternating 3/1 weights from the left
  *   EAN-8           → alternating 3/1 weights starting from the left
  *   CODE-128 / CODE-39 / QR / UPC-E → NO checksum rule (their integrity is handled
  *     by the symbol's own ECC/check character, not by a payload check digit)
@@ -106,8 +116,11 @@ function validateChecksum(barcode: string, format?: string): EANValidation {
     if (/^[0-9]{8}$/.test(barcode)) {
       return eanChecksum(barcode, [3, 1, 3, 1, 3, 1, 3]);
     }
-    if (/^[0-9]{12}$/.test(barcode) || /^[0-9]{13}$/.test(barcode)) {
-      return eanChecksum(barcode, alternatingWeights(barcode.length - 1));
+    if (/^[0-9]{12}$/.test(barcode)) {
+      return eanChecksum(barcode, upcAWeights(11));
+    }
+    if (/^[0-9]{13}$/.test(barcode)) {
+      return eanChecksum(barcode, alternatingWeights(12));
     }
     return { valid: true };
   }
@@ -131,7 +144,7 @@ function validateChecksum(barcode: string, format?: string): EANValidation {
     if (!/^[0-9]{12}$/.test(barcode)) {
       return { valid: false, reason: "UPC-A must be exactly 12 digits." };
     }
-    return eanChecksum(barcode, alternatingWeights(11));
+    return eanChecksum(barcode, upcAWeights(11));
   }
   return { valid: true };
 }
@@ -223,10 +236,13 @@ export function listProductBarcodes(
 
 export function lookupBarcode(
   actor: AuthenticatedUser,
-  rawBarcode: unknown
+  rawBarcode: unknown,
+  formatHint?: unknown
 ): BarcodeLookupResult {
   assertPermission(actor, "products:read");
-  const barcode = validateBarcode(normalizeBarcode(rawBarcode));
+  const hasFormatHint = formatHint !== undefined && formatHint !== null && String(formatHint).trim() !== "";
+  const format = hasFormatHint ? normalizeFormat(formatHint) : undefined;
+  const barcode = validateBarcode(normalizeBarcode(rawBarcode), format);
   const db = getDb();
 
   const row = db
@@ -239,7 +255,7 @@ export function lookupBarcode(
     .get(barcode) as { barcode_id: string; format: string; sku: string } | undefined;
 
   if (!row) {
-    return { barcode, found: false, product: null };
+    return { barcode, found: false, product: null, ...(format ? { format } : {}) };
   }
 
   const product = listProducts().find((p: Product) => p.sku === row.sku) ?? null;
