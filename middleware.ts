@@ -59,6 +59,32 @@ function isPublicApi(path: string, method: string) {
   return PUBLIC_APIS.some((p) => path === p || path.startsWith(`${p}/`));
 }
 
+/**
+ * Canonical public origin for redirects. Behind a reverse proxy/tunnel the
+ * request URL can arrive as the internal bind address (e.g.
+ * https://localhost:3016), which would send unauthenticated users to an
+ * unreachable login page. When the public URL is configured, always use it.
+ * Local development (no public URL configured) keeps using request.url.
+ */
+function appUrl(request: NextRequest, pathname: string): URL {
+  const configured =
+    process.env.NEXT_PUBLIC_APP_URL || process.env.PUBLIC_APP_URL || "";
+  if (configured) {
+    try {
+      const url = new URL(configured);
+      if (
+        /^https?:$/.test(url.protocol) &&
+        !/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/i.test(url.hostname)
+      ) {
+        return new URL(pathname, url.origin);
+      }
+    } catch {
+      // Ignore a malformed/placeholder value and fall back to request.url.
+    }
+  }
+  return new URL(pathname, request.url);
+}
+
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isApi = path.startsWith("/api/");
@@ -72,7 +98,7 @@ export function middleware(request: NextRequest) {
   const forcedLogout = path === "/login" && request.nextUrl.searchParams.has("reason");
   if (PUBLIC_PAGES.has(path)) {
     if (isLoggedIn && !forcedLogout) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(appUrl(request, "/"));
     }
     return NextResponse.next();
   }
@@ -98,7 +124,7 @@ export function middleware(request: NextRequest) {
         { status: 401 },
       );
     }
-    const loginUrl = new URL("/login", request.url);
+    const loginUrl = appUrl(request, "/login");
     loginUrl.searchParams.set("redirect", path + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
