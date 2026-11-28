@@ -47,10 +47,44 @@ export interface MailMessage {
   html?: string;
 }
 
-export async function sendMail(message: MailMessage): Promise<{ sent: boolean; error?: string }> {
+/** Safe, client-facing explanation of a mail failure. Never contains credentials. */
+export interface MailFailure {
+  code: string;
+  message: string;
+}
+
+/**
+ * Map a raw SMTP/nodemailer error to a short hint an administrator can act on.
+ * The raw message is deliberately NOT returned: it can contain the mail host,
+ * username, recipient or provider-specific details that should stay server-side.
+ */
+export function classifyMailError(raw?: string): MailFailure {
+  const text = (raw ?? "").toLowerCase();
+  if (!text) {
+    return { code: "smtp_unknown_error", message: "the mail provider rejected the message" };
+  }
+  const rules: Array<[RegExp, string, string]> = [
+    [/535|534|invalid login|authentication failed|bad credentials|username and password|password authentication/, "smtp_auth_failed", "the mail account login was rejected — check SMTP_USER/SMTP_PASS"],
+    [/enotfound|eai_again|getaddrinfo|econnrefused|econnreset|etimedout|timeout|socket hang up|network is unreachable|bad gateway/, "smtp_unreachable", "the mail server could not be reached — check SMTP_HOST/SMTP_PORT and network access"],
+    [/certificate|self.signed|self signed|tls|ssl|wrong version number|wrong version/, "smtp_tls_error", "the mail server's TLS setup was rejected — check SMTP_SECURE"],
+    [/55[0134]|mailbox|recipient|user unknown|no such user|invalid address/, "smtp_recipient_rejected", "the recipient address was rejected by the mail provider"],
+    [/smtp not configured/, "smtp_not_configured", "SMTP is not configured on the server"],
+    [/quota|sender|from address|5[0-9]{2}|4[0-9]{2}/, "smtp_rejected", "the mail provider rejected the message"],
+  ];
+  for (const [pattern, code, message] of rules) {
+    if (pattern.test(text)) return { code, message };
+  }
+  return { code: "smtp_unknown_error", message: "the mail provider rejected the message" };
+}
+
+export async function sendMail(message: MailMessage): Promise<{ sent: boolean; error?: string; failure?: MailFailure }> {
   if (!smtpConfigured()) {
     console.error("[mail] SMTP not configured — refusing to send. Set SMTP_HOST/SMTP_USER/SMTP_PASS in .env.");
-    return { sent: false, error: "SMTP not configured" };
+    return {
+      sent: false,
+      error: "SMTP not configured",
+      failure: classifyMailError("SMTP not configured"),
+    };
   }
   const from = `${process.env.SMTP_FROM_NAME ?? "Ascentra Global Ltd"} <${process.env.SMTP_FROM_EMAIL ?? process.env.SMTP_USER}>`;
   try {
@@ -66,8 +100,9 @@ export async function sendMail(message: MailMessage): Promise<{ sent: boolean; e
     return { sent: true };
   } catch (err) {
     const msg = (err as Error)?.message ?? String(err);
+    // Raw error stays in the server log only; callers receive a sanitized hint.
     console.error(`[mail] delivery failed to ${message.to}: ${msg}`);
-    return { sent: false, error: msg };
+    return { sent: false, error: msg, failure: classifyMailError(msg) };
   }
 }
 

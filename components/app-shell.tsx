@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BrainCircuit,
@@ -390,7 +390,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
     pathname.startsWith("/invite/");
-  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
@@ -447,19 +446,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (isStandalone) {
       return;
     }
+    let cancelled = false;
 
-    fetch("/api/v1/auth", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data: { authenticated?: boolean; permissions?: string[] }) => {
-        if (data?.permissions && Array.isArray(data.permissions)) {
+    const refreshAuthorization = async () => {
+      try {
+        const res = await fetch("/api/v1/auth", { cache: "no-store" });
+        const data = (await res.json().catch(() => null)) as {
+          authenticated?: boolean;
+          permissions?: string[];
+          reason?: string;
+        } | null;
+        if (cancelled) return;
+
+        if (data?.authenticated === true && Array.isArray(data.permissions)) {
           setUserPermissions(data.permissions);
+        } else if (data?.authenticated === false) {
+          // An explicitly unauthenticated response means the cookie is stale
+          // (deleted/disabled account). Never inherit permissions from a
+          // "default" user — clear the session and show the precise reason.
+          setUserPermissions([]);
+          try {
+            // Await cookie clearance so middleware does not bounce /login back.
+            await fetch("/api/v1/auth", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "logout" }),
+            });
+          } catch {
+            // Ignore — the ?reason parameter still lets /login through.
+          }
+          if (cancelled) return;
+          const reason =
+            data.reason === "account_deleted" ? "account_deleted" :
+            data.reason === "account_disabled" ? "account_disabled" : "session_expired";
+          window.location.href = `/login?reason=${reason}`;
+          return;
         }
-        setPermissionsLoaded(true);
-      })
-      .catch(() => {
-        setPermissionsLoaded(true);
-      });
-  }, [pathname, router]);
+      } catch {
+        // A network failure is not proof of logout — keep existing permissions.
+      } finally {
+        if (!cancelled) setPermissionsLoaded(true);
+      }
+    };
+
+    void refreshAuthorization();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, isStandalone]);
 
   if (isStandalone) {
     return <div className="min-h-screen bg-background">{children}</div>;

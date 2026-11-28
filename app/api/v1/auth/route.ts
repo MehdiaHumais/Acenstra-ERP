@@ -5,6 +5,7 @@ import {
   completeMfaLogin,
   getDefaultAdminUser,
   getEffectiveAuthorization,
+  getSessionFailureReason,
   getSessionUser,
   hydrateAuthorization,
   listRoleUsers,
@@ -19,19 +20,42 @@ import { getDb } from "@/server/db/connection";
 export async function GET(req: NextRequest) {
   try {
     const sessionUser = getSessionUser(req);
+
+    // A deleted/disabled account can still carry a cookie in another tab.
+    // Never resolve a "default" user for such a request: doing so made the
+    // UI silently appear as the seeded Super Admin after an admin deleted the
+    // account. Unauthenticated means no identity, no permissions, no roles.
+    if (!sessionUser) {
+      return NextResponse.json(
+        {
+          authenticated: false,
+          user: null,
+          permissions: [],
+          is_super_admin: false,
+          scopes: null,
+          available_roles: [],
+          reason: getSessionFailureReason(req)
+        },
+        { status: 401 }
+      );
+    }
+
     const availableUsers = listRoleUsers();
-    const actor = sessionUser ?? availableUsers[0] ?? null;
-    const effective = actor
-      ? actor.permissions ?? getEffectiveAuthorization({ id: actor.id, role: actor.role, roles: actor.roles }).permissions
-      : [];
+    const effective =
+      sessionUser.permissions ??
+      getEffectiveAuthorization({
+        id: sessionUser.id,
+        role: sessionUser.role,
+        roles: sessionUser.roles
+      }).permissions;
 
     return NextResponse.json({
-      authenticated: Boolean(sessionUser),
+      authenticated: true,
       users_count: availableUsers.length,
-      user: actor,
+      user: sessionUser,
       permissions: effective,
-      is_super_admin: Boolean(actor && (actor.role === "super_admin" || effective.includes("*"))),
-      scopes: actor?.scopes ?? null,
+      is_super_admin: sessionUser.role === "super_admin" || effective.includes("*"),
+      scopes: sessionUser.scopes ?? null,
       available_roles: availableUsers.map((u) => hydrateAuthorization(u))
     });
   } catch (err) {

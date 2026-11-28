@@ -810,7 +810,12 @@ export function AdminDashboard() {
     }
     setCreating(true);
     try {
-      const created = await api<{ invite_url: string | null; invitation: InvitationRow; email_delivery?: string }>(
+      const created = await api<{
+        invite_url: string | null;
+        invitation: InvitationRow;
+        email_delivery?: string;
+        email_error?: { code?: string; message?: string } | null;
+      }>(
         "/api/v1/admin/invitations",
         {
           method: "POST",
@@ -834,7 +839,10 @@ export function AdminDashboard() {
       if (created.email_delivery === "smtp_sent") {
         showNotice(`Invitation email sent to ${form.email.trim()}.`);
       } else if (created.email_delivery === "send_failed") {
-        showError("Email could not be delivered — share the invitation link directly.");
+        const hint = created.email_error?.message;
+        showError(
+          `Email could not be delivered${hint ? ` — ${hint}` : ""}. Share the invitation link directly.`
+        );
       } else {
         showNotice("Invitation created — email is not configured; share the link.");
       }
@@ -1086,7 +1094,12 @@ export function AdminDashboard() {
 
   const resendInvitation = async (id: string) => {
     try {
-      const created = await api<{ invite_url: string | null; invitation: InvitationRow; email_delivery?: string }>(
+      const created = await api<{
+        invite_url: string | null;
+        invitation: InvitationRow;
+        email_delivery?: string;
+        email_error?: { code?: string; message?: string } | null;
+      }>(
         `/api/v1/admin/invitations/${id}`,
         { method: "POST", body: JSON.stringify({ action: "resend" }) },
       );
@@ -1096,11 +1109,16 @@ export function AdminDashboard() {
         expires_at: created.invitation?.expires_at ?? "",
         delivery: created.email_delivery ?? "smtp_not_configured",
       });
-      showNotice(
-        created.email_delivery === "smtp_sent"
-          ? `Invitation email re-sent to ${created.invitation?.email ?? "the recipient"}.`
-          : "Email could not be delivered — share the link directly.",
-      );
+      if (created.email_delivery === "smtp_sent") {
+        showNotice(`Invitation email re-sent to ${created.invitation?.email ?? "the recipient"}.`);
+      } else if (created.email_delivery === "send_failed") {
+        const hint = created.email_error?.message;
+        showError(
+          `Email could not be delivered${hint ? ` — ${hint}` : ""}. Share the link directly.`
+        );
+      } else {
+        showNotice("Invitation re-created — email is not configured on the server; share the link.");
+      }
       loadInvitations();
     } catch (err) {
       showError((err as Error).message);

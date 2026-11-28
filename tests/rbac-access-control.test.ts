@@ -54,7 +54,7 @@ import { GET as getAdminPermissions } from "@/app/api/v1/admin/permissions/route
 import { GET as getBiExport } from "@/app/api/v1/management/bi/export/route";
 import { GET as getConsolidatedExport } from "@/app/api/v1/stores/consolidated/export/route";
 import { POST as postReconciliationImport } from "@/app/api/v1/finance/reconciliation/import/route";
-import { POST as postAuth } from "@/app/api/v1/auth/route";
+import { GET as getAuth, POST as postAuth } from "@/app/api/v1/auth/route";
 
 function makeReq(
   urlPath: string,
@@ -546,6 +546,37 @@ describe("RBAC — roles, scopes, approval authority, access control and securit
     const suspended = getAccessUser(adminActor, user.id);
     assert.equal(suspended.active, false);
     assert.equal(getSessionUser(makeReq("/api/v1/auth/me", { token: tokenFor(user as any) })), null);
+  });
+
+  it("15b. a deleted account's stale session never resolves to a default admin", async () => {
+    const unique = Date.now();
+    const user = createAccessUser(adminActor, {
+      name: "Deleted Session Target",
+      email: `deleted-session-${unique}@test.local`,
+      password: "Ascentra!2026",
+      roles: ["picker"],
+      warehouse: "Milan Cold Hub"
+    });
+    const staleToken = tokenFor(user as any);
+
+    // Confirm the identity is valid before deletion.
+    const before = await getAuth(makeReq("/api/v1/auth", { token: staleToken }));
+    const beforeBody = await before.json();
+    assert.equal(before.status, 200);
+    assert.equal(beforeBody.authenticated, true);
+    assert.equal(beforeBody.user?.email, user.email);
+
+    deleteAccessUser(adminActor, user.id);
+
+    const after = await getAuth(makeReq("/api/v1/auth", { token: staleToken }));
+    const afterBody = await after.json();
+    assert.equal(after.status, 401);
+    assert.equal(afterBody.authenticated, false);
+    assert.equal(afterBody.user, null);
+    assert.deepEqual(afterBody.permissions, []);
+    assert.equal(afterBody.is_super_admin, false);
+    assert.deepEqual(afterBody.available_roles, []);
+    assert.equal(afterBody.reason, "account_deleted");
   });
 
   // -------------------------------------------------------------------------

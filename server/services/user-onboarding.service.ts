@@ -2,7 +2,8 @@ import crypto from "node:crypto";
 import {
   sendMail,
   buildInvitationEmail,
-  smtpConfigured
+  smtpConfigured,
+  type MailFailure
 } from "@/server/services/mail.service";
 import { getDb, withTransaction } from "@/server/db/connection";
 import type { SqlPrimitive } from "@/server/db/sqlite-driver";
@@ -138,6 +139,8 @@ export interface InvitationCreated {
   /** Raw link — shown exactly once, never stored server-side. */
   invite_url: string | null;
   email_delivery: "smtp_sent" | "send_failed" | "smtp_not_configured";
+  /** Sanitized reason when delivery failed — safe to show to an administrator. */
+  email_error?: MailFailure | null;
 }
 
 export async function createInvitation(actor: AuthenticatedUser, input: InvitationInput): Promise<InvitationCreated> {
@@ -188,11 +191,12 @@ export async function createInvitation(actor: AuthenticatedUser, input: Invitati
   });
 
   const inviteUrl = `${publicBaseUrl()}/invite/${token}`;
-  const emailDelivery = await deliverInvitationEmail(email, name, inviteUrl, input.email_subject, input.email_intro);
+  const delivery = await deliverInvitationEmail(email, name, inviteUrl, input.email_subject, input.email_intro);
   return {
     invitation: toSummary(db.prepare("SELECT * FROM user_invitations WHERE id = ?").get(id) as unknown as InvitationRow),
     invite_url: inviteUrl,
-    email_delivery: emailDelivery
+    email_delivery: delivery.status,
+    email_error: delivery.failure ?? null
   };
 }
 
@@ -203,14 +207,17 @@ async function deliverInvitationEmail(
   inviteUrl: string,
   subject?: string,
   intro?: string
-): Promise<"smtp_sent" | "send_failed" | "smtp_not_configured"> {
+): Promise<{
+  status: "smtp_sent" | "send_failed" | "smtp_not_configured";
+  failure?: MailFailure;
+}> {
   if (!smtpConfigured()) {
     console.error("[user-onboarding] SMTP not configured — invitation NOT emailed; link is returned to the admin only.");
-    return "smtp_not_configured";
+    return { status: "smtp_not_configured" };
   }
   const message = buildInvitationEmail({ name, email, inviteUrl, subject, intro });
   const result = await sendMail(message);
-  return result.sent ? "smtp_sent" : "send_failed";
+  return { status: result.sent ? "smtp_sent" : "send_failed", failure: result.failure };
 }
 
 function publicBaseUrl(): string {
@@ -288,11 +295,12 @@ export async function resendInvitation(actor: AuthenticatedUser, id: string): Pr
     after: { email: row.email }
   });
   const inviteUrl = `${publicBaseUrl()}/invite/${token}`;
-  const emailDelivery = await deliverInvitationEmail(row.email, row.name, inviteUrl);
+  const delivery = await deliverInvitationEmail(row.email, row.name, inviteUrl);
   return {
     invitation: toSummary(db.prepare("SELECT * FROM user_invitations WHERE id = ?").get(id) as unknown as InvitationRow),
     invite_url: inviteUrl,
-    email_delivery: emailDelivery
+    email_delivery: delivery.status,
+    email_error: delivery.failure ?? null
   };
 }
 

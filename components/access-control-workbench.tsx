@@ -340,7 +340,12 @@ export function AccessControlWorkbench() {
       return;
     }
     try {
-      const created = await api<{ invite_url: string | null; invitation: InvitationRow; email_delivery?: string }>(
+      const created = await api<{
+        invite_url: string | null;
+        invitation: InvitationRow;
+        email_delivery?: string;
+        email_error?: { code?: string; message?: string } | null;
+      }>(
         "/api/v1/admin/invitations",
         {
           method: "POST",
@@ -361,11 +366,20 @@ export function AccessControlWorkbench() {
         delivery: created.email_delivery ?? "smtp_not_configured",
       });
       setNewUser({ ...newUser, name: "", email: "", warehouseScope: "", storeScope: "", store_id: "" });
-      flash(
-        created.email_delivery === "smtp_sent"
-          ? `Invitation email sent to ${newUser.email.trim()}. Share the backup link if needed — expires in 72 hours.`
-          : "Email could not be delivered — share the invitation link directly; it expires in 72 hours."
-      );
+      if (created.email_delivery === "smtp_sent") {
+        flash(
+          `Invitation email sent to ${newUser.email.trim()}. Share the backup link if needed — expires in 72 hours.`
+        );
+      } else if (created.email_delivery === "send_failed") {
+        const hint = created.email_error?.message;
+        flash(
+          `Email could not be delivered${hint ? ` — ${hint}` : ""}. Share the invitation link directly; it expires in 72 hours.`
+        );
+      } else {
+        flash(
+          "Invitation created — email is not configured on the server; share the link directly (expires in 72 hours)."
+        );
+      }
       loadInvitations();
       loadEvents();
     } catch (err) {
@@ -405,7 +419,12 @@ export function AccessControlWorkbench() {
 
   const resendInvitation = async (id: string) => {
     try {
-      const created = await api<{ invite_url: string | null; invitation: InvitationRow; email_delivery?: string }>(
+      const created = await api<{
+        invite_url: string | null;
+        invitation: InvitationRow;
+        email_delivery?: string;
+        email_error?: { code?: string; message?: string } | null;
+      }>(
         `/api/v1/admin/invitations/${id}`,
         { method: "POST", body: JSON.stringify({ action: "resend" }) }
       );
@@ -415,11 +434,14 @@ export function AccessControlWorkbench() {
         expires_at: created.invitation?.expires_at ?? "",
         delivery: created.email_delivery ?? "smtp_not_configured",
       });
-      flash(
-        created.email_delivery === "smtp_sent"
-          ? `Invitation email re-sent to ${created.invitation?.email ?? "the recipient"}.`
-          : "Email could not be delivered — share the link directly."
-      );
+      if (created.email_delivery === "smtp_sent") {
+        flash(`Invitation email re-sent to ${created.invitation?.email ?? "the recipient"}.`);
+      } else if (created.email_delivery === "send_failed") {
+        const hint = created.email_error?.message;
+        flash(`Email could not be delivered${hint ? ` — ${hint}` : ""}. Share the link directly.`);
+      } else {
+        flash("Invitation re-created — email is not configured on the server; share the link directly.");
+      }
       loadInvitations();
       loadEvents();
     } catch (err) {

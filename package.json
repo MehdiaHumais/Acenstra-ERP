@@ -9,7 +9,7 @@
     "postbuild": "node scripts/copy-db-runtime.cjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/auth-rbac-mfa.test.ts tests/inbound-receiving.test.ts tests/putaway.test.ts tests/quality-gate.test.ts tests/security-hardening.test.ts tests/stock-intelligence.test.ts tests/customer-order.test.ts tests/customer-order-workflow.test.ts tests/rbac-access-control.test.ts tests/barcode-auth.test.ts tests/product-barcode.test.ts tests/barcode-photo.test.ts tests/user-onboarding.test.ts tests/external-barcode.test.ts tests/access-request.test.ts tests/notifications-contact.test.ts tests/sql-translate.test.ts tests/overview-safety.test.ts tests/middleware-redirect.test.ts",
+    "test": "node --import tsx --test tests/auth-rbac-mfa.test.ts tests/inbound-receiving.test.ts tests/putaway.test.ts tests/quality-gate.test.ts tests/security-hardening.test.ts tests/stock-intelligence.test.ts tests/customer-order.test.ts tests/customer-order-workflow.test.ts tests/rbac-access-control.test.ts tests/barcode-auth.test.ts tests/product-barcode.test.ts tests/barcode-photo.test.ts tests/user-onboarding.test.ts tests/external-barcode.test.ts tests/access-request.test.ts tests/notifications-contact.test.ts tests/sql-translate.test.ts tests/overview-safety.test.ts tests/middleware-redirect.test.ts tests/mail-delivery-diagnostics.test.ts",
     "test:e2e": "node --test tests/backend-e2e.test.mjs",
     "verify": "npm run typecheck && npm run test && npm run build",
     "db:migrate:postgres": "tsx scripts/migrate-sqlite-to-postgres.ts",
