@@ -96,7 +96,7 @@ export function InsightList({ insights }: { insights: InsightWithDecision[] }) {
                 <ProgressBar value={insight.confidence * 100} tone={insight.confidence > 0.9 ? "ok" : "info"} />
               </div>
               <ul className="mt-3 flex flex-wrap gap-1.5">
-                {insight.evidence.map((item) => (
+                {(Array.isArray(insight.evidence) ? insight.evidence : []).map((item) => (
                   <li
                     key={item}
                     className="rounded-md border border-border bg-muted/50 px-2 py-1 text-[10px] font-medium text-muted-foreground"

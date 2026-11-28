@@ -66,6 +66,95 @@ function replacePlaceholders(sql) {
 
 const INTERVAL_RE = /'([+-]?)\s*(\d+)\s+(second|minute|hour|day|week|month|year)s?'/gi;
 
+/** True when an offset is inside a single- or double-quoted SQL literal. */
+function isQuoted(sql, index) {
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < index; i++) {
+    if (sql[i] === "'" && !inDouble) inSingle = !inSingle;
+    else if (sql[i] === '"' && !inSingle) inDouble = !inDouble;
+  }
+  return inSingle || inDouble;
+}
+
+/** Index of the `)` matching the `(` at `open`, or -1 when unbalanced. */
+function findClosingParen(sql, open) {
+  let depth = 0;
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = open; i < sql.length; i++) {
+    const c = sql[i];
+    if (c === "'" && !inDouble) inSingle = !inSingle;
+    else if (c === '"' && !inSingle) inDouble = !inDouble;
+    if (inSingle || inDouble) continue;
+    if (c === "(") depth++;
+    else if (c === ")") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/** Split a function argument list on top-level commas only. */
+function splitArgs(text) {
+  const args = [];
+  let cur = "";
+  let depth = 0;
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === "'" && !inDouble) inSingle = !inSingle;
+    else if (c === '"' && !inSingle) inDouble = !inDouble;
+    if (!inSingle && !inDouble) {
+      if (c === "(") depth++;
+      else if (c === ")") depth--;
+      else if (c === "," && depth === 0) {
+        args.push(cur.trim());
+        cur = "";
+        continue;
+      }
+    }
+    cur += c;
+  }
+  if (cur.trim()) args.push(cur.trim());
+  return args;
+}
+
+/**
+ * SQLite's scalar min()/max() accept two or more arguments; Postgres only has
+ * the aggregate form. Rewrite multi-argument calls to LEAST/GREATEST while
+ * preserving SQLite's NULL-propagation semantics. Single-argument aggregate
+ * calls (e.g. MAX(created_at)) are left untouched.
+ */
+function translateScalarMinMax(sql) {
+  let result = "";
+  let cursor = 0;
+  const re = /\b(MAX|MIN)\s*\(/gi;
+  let match;
+  while ((match = re.exec(sql)) !== null) {
+    const start = match.index;
+    if (isQuoted(sql, start)) continue;
+    const open = start + match[0].length - 1;
+    const close = findClosingParen(sql, open);
+    if (close === -1) continue;
+    const rawArgs = splitArgs(sql.slice(open + 1, close));
+    if (rawArgs.length <= 1) continue;
+
+    const args = rawArgs.map((arg) => translateScalarMinMax(arg));
+    const fn = match[1].toUpperCase() === "MAX" ? "GREATEST" : "LEAST";
+    const nullChecks = args.map((arg) => `(${arg}) IS NULL`).join(" OR ");
+    const replacement = `CASE WHEN ${nullChecks} THEN NULL ELSE ${fn}(${args.join(", ")}) END`;
+
+    result += sql.slice(cursor, start) + replacement;
+    cursor = close + 1;
+    re.lastIndex = cursor;
+  }
+  result += sql.slice(cursor);
+  return result;
+}
+
 function translateDateFunction(sql, fn, format) {
   const re = new RegExp("\\b" + fn + "\\s*\\(\\s*'now'\\s*(?:,\\s*((?:'[^']*'\\s*,?\\s*)+))?\\)", "gi");
   return sql.replace(re, (_m, args) => {
@@ -133,12 +222,19 @@ function translateStatement(input, paramCount) {
   // SQLite's julianday(...) returns fractional days since the Julian epoch;
   // the app only uses differences, so epoch seconds / 86400 is equivalent.
   sql = sql.replace(/\bjulianday\s*\(\s*'now'\s*\)/gi, "(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) / 86400.0)");
-  sql = sql.replace(/\bjulianday\s*\(\s*([a-zA-Z0-9_.]+)\s*\)/gi, "(EXTRACT(EPOCH FROM $1::timestamp) / 86400.0)");
+  sql = sql.replace(
+    /\bjulianday\s*\(\s*([a-zA-Z0-9_.]+)\s*\)/gi,
+    (_m, column) => `(EXTRACT(EPOCH FROM (${column})::timestamp) / 86400.0)`
+  );
 
   // SQLite LIKE is case-insensitive for ASCII by default; keep that behaviour.
   sql = sql.replace(/\bLIKE\s+\?/gi, "ILIKE ?");
 
   if (paramCount > 0) sql = replacePlaceholders(sql);
+
+  // Must run after placeholder replacement: NULL checks repeat each argument,
+  // so numbered parameters ($1) are reused safely while `?` would be duplicated.
+  sql = translateScalarMinMax(sql);
 
   if (isInsertOrIgnore && !/\bON\s+CONFLICT\b/i.test(sql)) {
     sql = sql.replace(/;\s*$/, "") + " ON CONFLICT DO NOTHING";

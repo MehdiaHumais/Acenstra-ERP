@@ -194,8 +194,8 @@ export function StatRow({
   );
 }
 
-export function statusTone(value: string): StatusTone {
-  const normalised = value.toLowerCase().replace(/\s+/g, "_");
+export function statusTone(value: string | null | undefined): StatusTone {
+  const normalised = String(value ?? "").toLowerCase().replace(/\s+/g, "_");
   if (["active", "approved", "delivered", "paid", "released", "accepted", "in_range", "done", "clear", "ok", "valid", "received", "awarded", "selected", "completed", "fulfilled"].includes(normalised)) {
     return "ok";
   }

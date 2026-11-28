@@ -52,7 +52,21 @@ import type { InboundShipmentDetail } from "@/lib/inbound";
 
 export async function getOverview(): Promise<DashboardOverview> {
   try {
-    return getDashboardOverview();
+    const data = getDashboardOverview();
+    // A partial or malformed service result must never take down the whole
+    // overview screen with the generic render-error boundary.
+    return {
+      ...emptyOverview,
+      ...data,
+      kpis: Array.isArray(data.kpis) ? data.kpis : emptyOverview.kpis,
+      alerts: Array.isArray(data.alerts) ? data.alerts : emptyOverview.alerts,
+      temperature: Array.isArray(data.temperature) ? data.temperature : emptyOverview.temperature,
+      expiring: Array.isArray(data.expiring) ? data.expiring : emptyOverview.expiring,
+      tasks: Array.isArray(data.tasks) ? data.tasks : emptyOverview.tasks,
+      insights: Array.isArray(data.insights) ? data.insights : emptyOverview.insights,
+      journey: Array.isArray(data.journey) && data.journey.length > 0 ? data.journey : emptyOverview.journey,
+      revenue_by_week: Array.isArray(data.revenue_by_week) ? data.revenue_by_week : emptyOverview.revenue_by_week,
+    };
   } catch {
     return emptyOverview;
   }

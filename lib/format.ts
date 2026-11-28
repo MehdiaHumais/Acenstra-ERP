@@ -65,8 +65,8 @@ export function dateTime(value: string): string {
   }).format(parsed);
 }
 
-export function titleCase(value: string): string {
-  return value
+export function titleCase(value: string | null | undefined): string {
+  return String(value ?? "")
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
