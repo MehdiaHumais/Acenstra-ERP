@@ -66,9 +66,10 @@
     outline-offset: 2px;
   }
 
+  /* Solid highlight — translucent lime was effectively invisible on phones. */
   ::selection {
-    background: hsl(var(--accent) / 0.28);
-    color: hsl(var(--accent-foreground));
+    background: hsl(var(--primary));
+    color: #ffffff;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -196,11 +197,21 @@
     @apply h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground/70;
   }
 
-  /* Native <option> popups ignore select text colors on Windows dark mode and
-     render dark-on-dark (invisible). Force a readable white popup + navy text. */
-  .input option {
-    background: #ffffff;
+  /* Native <option> popups can render dark-on-dark or wash out the checked row.
+     Force a readable white popup and a solid, obvious selected value. */
+  select option,
+  .input option,
+  .input optgroup option {
+    background-color: #ffffff;
     color: #071a29;
+  }
+
+  select option:checked,
+  select option[selected],
+  .input option:checked,
+  .input option[selected] {
+    background-color: hsl(var(--primary));
+    color: #ffffff;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
@@ -417,6 +428,6 @@ main .grid > * {
 }
 .chat-bot-bubble::selection,
 .chat-bot-bubble *::selection {
-  background: rgba(200, 241, 105, 0.4);
-  color: inherit;
+  background: #c8f169;
+  color: #061222;
 }

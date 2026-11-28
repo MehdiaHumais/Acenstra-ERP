@@ -87,6 +87,26 @@ describe("External barcode lookup — Open Food Facts", () => {
     assert.ok(result.preview?.attribution.includes("Open Food Facts"));
   });
 
+  it("uses a localized Open Food Facts name when product_name is empty", async () => {
+    clearExternalBarcodeCache();
+    const localized = {
+      status: "success",
+      product: {
+        product_name: "",
+        product_name_it: "Passata di pomodoro",
+        brands: "Mutti",
+        quantity: "700 g",
+      },
+    };
+    const result = await withFetch(
+      async () => new Response(JSON.stringify(localized), { status: 200, headers: { "content-type": "application/json" } }),
+      () => externalBarcodeLookup("8056172900017")
+    );
+    assert.equal(result.status, "found");
+    assert.equal(result.preview?.name, "Passata di pomodoro");
+    assert.equal(result.preview?.brand, "Mutti");
+  });
+
   it("returns not_found when OFF reports status 0", async () => {
     clearExternalBarcodeCache();
     const result = await withFetch(

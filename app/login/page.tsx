@@ -27,6 +27,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installed, setInstalled] = useState(false);
 
   // Track connectivity for the offline banner.
   useEffect(() => {
@@ -53,15 +54,43 @@ export default function LoginPage() {
     }
   }, []);
 
-  // Offer the PWA install prompt once the browser considers the app installable.
+  // Offer the PWA install prompt only while the browser considers the app
+  // installable. Do not nag someone already running the installed PWA.
   useEffect(() => {
+    const detectInstalled = () => {
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as any).standalone === true;
+      if (standalone) {
+        setInstalled(true);
+        setInstallPrompt(null);
+      }
+      return standalone;
+    };
+
     const handler = (event: any) => {
+      if (detectInstalled()) return;
       event.preventDefault();
       setInstallPrompt(event);
     };
     window.addEventListener("beforeinstallprompt", handler);
-    const onInstalled = () => setInstallPrompt(null);
+
+    const onInstalled = () => {
+      setInstalled(true);
+      setInstallPrompt(null);
+    };
     window.addEventListener("appinstalled", onInstalled);
+
+    detectInstalled();
+    const getRelatedApps = (navigator as any).getInstalledRelatedApps;
+    if (typeof getRelatedApps === "function") {
+      getRelatedApps.call(navigator)
+        .then((apps: any[]) => {
+          if (Array.isArray(apps) && apps.some((app) => app?.platform === "web")) onInstalled();
+        })
+        .catch(() => { /* API unavailable — display-mode check is still authoritative */ });
+    }
+
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", onInstalled);
@@ -157,7 +186,7 @@ export default function LoginPage() {
               <span>You’re offline. Ascentra needs a network connection to sign you in and load live data.</span>
             </div>
           )}
-          {installPrompt && (
+          {installPrompt && !installed && (
             <button
               type="button"
               onClick={async () => {
@@ -172,7 +201,7 @@ export default function LoginPage() {
               }}
               className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
             >
-              <Download className="h-4 w-4" /> Install Ascentra on this phone
+              <Download className="h-4 w-4" /> Install Ascentra app
             </button>
           )}
           {error && (

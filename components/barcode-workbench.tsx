@@ -655,7 +655,7 @@ export function BarcodeWorkbench({ products }: ProductBarcodeLookupProps) {
                   <p className="mt-2 font-semibold">
                     {externalStatus === "not_found" && "Product not found in external database."}
                     {externalStatus === "unavailable" && (externalReason ?? "External service unavailable — try again later.")}
-                    {externalStatus === "malformed" && "The external database returned an unusable record."}
+                    {externalStatus === "malformed" && (externalReason ?? "The external record has no usable product name.")}
                     {externalStatus === "disabled" && "External lookup is disabled on this deployment."}
                   </p>
                   <p className="mt-1 text-[10px] text-sky-800">You can still register this barcode manually once you created the product yourself.</p>

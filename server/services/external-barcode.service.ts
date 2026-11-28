@@ -152,6 +152,31 @@ function pickString(obj: unknown, keys: string[]): string | null {
   return null;
 }
 
+/** Open Food Facts sometimes leaves product_name empty but fills a localized
+ *  variant (product_name_it, product_name_en, generic_name_it, ...). Accept any
+ *  of them before declaring an otherwise usable record malformed. */
+function pickLocalizedName(product: Record<string, unknown>): string | null {
+  const preferred = [
+    "product_name",
+    "product_name_en",
+    "product_name_it",
+    "generic_name",
+    "generic_name_en",
+    "generic_name_it",
+    "name"
+  ];
+  for (const key of preferred) {
+    const value = sanitizeText(pickString(product, [key]), 200);
+    if (value) return value;
+  }
+  for (const [key, raw] of Object.entries(product)) {
+    if (!/^(product_name|generic_name|name)(?:_[a-z]{2,3})?$/i.test(key)) continue;
+    const value = sanitizeText(typeof raw === "string" ? raw : null, 200);
+    if (value) return value;
+  }
+  return null;
+}
+
 function pickTag(tags: unknown, lang: string): string | null {
   if (!Array.isArray(tags)) return null;
   const pref = `${lang}:`;
@@ -279,13 +304,13 @@ function parseProductPayload(provider: string, barcode: string, payload: unknown
     cacheSet(cacheKey, out);
     return out;
   }
-  const name = sanitizeText(pickString(product, ["product_name", "generic_name", "name"]));
+  const name = pickLocalizedName(product);
   if (!name) {
     const out: ExternalLookupResult = {
       status: "malformed",
       provider,
       preview: null,
-      reason: "The external database returned a product with no usable name.",
+      reason: "The external record has no product name in any supported language. Enter the name yourself or associate this barcode with an existing product.",
     };
     cacheSet(cacheKey, out);
     return out;
