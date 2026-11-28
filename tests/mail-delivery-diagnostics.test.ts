@@ -16,6 +16,7 @@ process.env.SMTP_PASS = "probe-secret-must-never-leak";
 process.env.SMTP_SECURE = "starttls";
 process.env.SMTP_FROM_EMAIL = "probe-from@example.local";
 
+import { GET as getHealth } from "@/app/health/route";
 import { classifyMailError } from "@/server/services/mail.service";
 import { createInvitation } from "@/server/services/user-onboarding.service";
 import { ensureRbacConfig, type AuthenticatedUser } from "@/server/security/auth";
@@ -57,6 +58,16 @@ describe("SMTP failure diagnostics", () => {
     ]) {
       assert.equal(serialized.includes(secret), false, `leaked: ${secret}`);
     }
+  });
+
+  it("exposes only a presence flag for SMTP in the public health response", async () => {
+    const res = await getHealth();
+    const body = (await res.json()) as { email?: { smtp_configured?: boolean } };
+    assert.equal(res.status, 200);
+    assert.equal(body.email?.smtp_configured, true);
+    const serialized = JSON.stringify(body);
+    assert.equal(serialized.includes("probe-user@example.local"), false);
+    assert.equal(serialized.includes("probe-secret-must-never-leak"), false);
   });
 
   it("returns a sanitized failure reason from createInvitation when SMTP is down", async () => {

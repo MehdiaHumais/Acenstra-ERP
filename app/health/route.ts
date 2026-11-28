@@ -6,6 +6,7 @@ import {
 } from "@/server/db/connection";
 import { cacheQueue } from "@/server/core/cache-queue";
 import { authorizeRequest, handleApiError } from "@/server/core/http";
+import { smtpConfigured } from "@/server/services/mail.service";
 
 export async function GET() {
   try {
@@ -23,6 +24,8 @@ export async function GET() {
         active_skus: Number(row.c)
       },
       infrastructure: cacheQueue.stats(),
+      // Presence-only signal — never expose SMTP host, user or password.
+      email: { smtp_configured: smtpConfigured() },
       timestamp: new Date().toISOString()
     });
   } catch (err) {
